@@ -7,13 +7,6 @@ from game import cards as c
 from game import engine as e
 from game import moves as m
 from game import state as s
-from bots import lethal_bot as l
-from bots import value_bot as v
-from bots.doomsayer_smart_bot import Doomsayer_smart_bot as doom 
-from game.cards import CardName
-from play import play_game
-
-
 
 
 def make_empty_state(
@@ -212,77 +205,6 @@ def test_apply_move_does_not_mutate_input():
     print("✓ test_apply_move_does_not_mutate_input")
 
 
-
-def test_found_lethal():
-    state = make_empty_state(p0_board=[make_minion(5,5,can_attack=True)], p1_hp=5, current_player=0)
-    
-    bot = l.Lethal_Bot(use_persistent_cache=False)
-    print("making move in test_found_lethal")
-    move = bot.pick_move(state)
-    print(f"got move {move}")
-    new_state = e.apply_move(state, move)
-    assert new_state.winner == 0
-    print("Lethal_Bot is finding lethal")
-
-
-def test_fallback_matches_valuebot():
-    state = make_empty_state(
-        p0_board=[make_minion(3, 3, can_attack=True), make_minion(2, 2, can_attack=True)],
-        p1_hp=20,  # too much HP for lethal
-        p0_mana=10,
-        p1_board=[make_minion(4, 4)]
-    )
-    
-    lethal_bot = l.Lethal_Bot(use_persistent_cache=False)
-    value_bot = v.ValueBot()
-    
-    lethal_move = lethal_bot.pick_move(state)
-    value_move = value_bot.pick_move(state)
-    
-    print(f"LethalBot picked: {lethal_move}")
-    print(f"ValueBot picked:  {value_move}")
-    
-    # They should match when no lethal is possible
-    assert lethal_move == value_move, f"Mismatch! Lethal={lethal_move}, Value={value_move}"
-
-
-def test_doomsayer_wipes_on_start_of_turn():
-    doomsayer = make_minion(0,7,card = c.CardName.DOOMSAYER,can_attack=False)
-    other_minion = make_minion(3,3)
-    state = make_empty_state(
-        p0_board=[other_minion],
-        p1_board=[doomsayer],
-        current_player=0
-    )
-    new_state = e.apply_move(state,m.EndTurn())
-    #print(f"\n{new_state.players[0].board},\n {new_state.players[1].board}\n")
-    assert new_state.players[0].board==[]
-    assert new_state.players[1].board==[]
-
-def test_alexstrasza_hp_and_dmg():
-    state = make_empty_state(
-        p0_hand=[c.CardName.ALEXSTRASZA_GUARDIAN_OF_LIFE],
-        p0_mana=10,
-        p0_hp=10,
-        p1_hp=29,
-        current_player=0
-    )
-    new_state = e.apply_move(state, m.PlayMinion(hand_index=0, board_position=0))
-    assert new_state.players[0].hp==15, f"expected 15, got {new_state.players[0].hp}... opp_hp: {new_state.players[1].hp}"
-
-    new_state.players[0].hero_power_power=100
-    final_state = e.apply_move(new_state, m.HeroPower(target=m.FriendlyHero()))
-    assert final_state.players[1].hp==14, f"expexed 14, got{final_state.players[1].hp}"
-
-def test_update_on_end_turn():
-    bot1 = doom()
-    bot2=doom()
-
-    play_game(bot1,bot2)
-    #print(f"bot1 weight: {bot1.eyes.weights[CardName.DOOMSAYER]}")
-    assert 0<bot1.eyes.weights[CardName.DOOMSAYER]<1, f"bot1 weight: {bot1.eyes.weights[CardName.DOOMSAYER]}"
-    assert 0<bot2.eyes.weights[CardName.DOOMSAYER]<1
-    
 # ----------------------------------------------------------------------
 # Runner
 # ----------------------------------------------------------------------
@@ -300,11 +222,6 @@ def run_all_tests():
         test_end_turn_switches_player,
         test_end_turn_clears_summoning_sickness,
         test_apply_move_does_not_mutate_input,
-        test_found_lethal,
-        test_fallback_matches_valuebot,
-        test_doomsayer_wipes_on_start_of_turn,
-        test_alexstrasza_hp_and_dmg,
-        test_update_on_end_turn
     ]
     passed = 0
     failed = 0

@@ -1,12 +1,12 @@
 from dataclasses import dataclass, field
 from typing import Optional
+from enum import Enum
 from game import cards
-
 
 @dataclass
 class Minion:
     """
-    A minion on the board with dynamic stats.
+    A minion on the board with dynamic stats
     """
     card: cards.CardName
     attack: int
@@ -15,80 +15,25 @@ class Minion:
     taunt: bool
     can_attack: bool
 
-
 @dataclass
 class PlayerState:
-    alexstraza_guardian_of_life_charges = 0
-    hp: int = 30
-    max_hp: int = 30
-    mana: int = 0
-    max_mana: int = 0
-    hand: list[cards.CardName] = field(default_factory=list)
-    deck: list[cards.CardName] = field(default_factory=list)
-    board: list[Minion] = field(default_factory=list)
-    fatigue_counter: int = 0
     hero_power_used: bool = False
     hero_power_power: int = 2
-
+    hp: int = 20
+    max_hp: int = 20
+    mana: int = 0
+    max_mana: int = 0
+    hand: list[cards.CardName]= field(default_factory=list)#the int is the turn the card was put in hand
+    deck: list[cards.CardName]=field(default_factory=list)
+    board: list[Minion]=field(default_factory=list)
+    fatigue_counter: int = 0
 
 @dataclass
 class GameState:
     players: tuple[PlayerState, PlayerState]
-    current_player: int
-    turn_number: int = 1
+    current_player: int #0 or 1 for player 1 or 2's turn
+    turn_number: int=1
     winner: Optional[int] = None
 
-    def state_key(self):
-        p = self.players[self.current_player]
-        o = self.players[1-self.current_player]
-        return (
-            #p.hp,p.mana,p.hero_power_used,
-            #tuple(p.hand),
-            #tuple(p.deck),#dont need for minion with no spells ond no ability version
-            tuple((m.attack, m.health, m.can_attack) for m in p.board),
-            o.hp,
-            #o.fatigue_counter,
-            tuple((m.attack, m.health, m.can_attack)for m in o.board if m.taunt==True)
-        )
-
-    def __repr__(self) -> str:
-        if self.winner is not None:
-            return f"<Game over, winner={self.winner}>"
-        lines = [f"=== Turn {self.turn_number}, P{self.current_player}'s turn ==="]
-        for i, p in enumerate(self.players):
-            marker = "*" if i == self.current_player else " "
-            lines.append(
-                f"{marker}P{i}: HP={p.hp}/{p.max_hp} Mana={p.mana}/{p.max_mana} "
-                f"Hand={len(p.hand)} Deck={len(p.deck)}"
-            )
-            if p.board:
-                board_str = " ".join(
-                    f"[{m.attack}/{m.health}{'T' if m.taunt else ''}{'' if m.can_attack else '~'}]"
-                    for m in p.board
-                )
-                lines.append(f"   Board: {board_str}")
-            else:
-                lines.append(f"   Board: (empty)")
-        return "\n".join(lines)
 
 
-    def render(self) -> str:
-            """Multi-line human-readable view. Call explicitly."""
-            if self.winner is not None:
-                return f"=== Game over, winner=P{self.winner} ==="
-            lines = [f"=== Turn {self.turn_number}, P{self.current_player}'s turn ==="]
-            for i, p in enumerate(self.players):
-                marker = "*" if i == self.current_player else " "
-                lines.append(
-                    f"{marker}P{i}: HP={p.hp}/{p.max_hp} Mana={p.mana}/{p.max_mana} "
-                    f"Hand={len(p.hand)} Deck={len(p.deck)}"
-                )
-                if p.board:
-                    board_str = " ".join(
-                        f"[{m.attack}/{m.health}{'T' if m.taunt else ''}{'' if m.can_attack else '~'}]"
-                        for m in p.board
-                    )
-                    lines.append(f"   Board: {board_str}")
-                else:
-                    lines.append(f"   Board: (empty)")
-            return "\n".join(lines)
