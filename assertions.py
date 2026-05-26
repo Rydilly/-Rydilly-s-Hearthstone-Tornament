@@ -1,60 +1,59 @@
 """
-Quick smoke tests for the game engine.
-Run with: python play.py
+Engine tests for the v2 mutation-based API.
+
+Pattern: apply_move(state, move) mutates state in place and returns undo.
+Tests assert against `state` (not `new_state`).
+
+Most tests also do a round-trip: snapshot state, apply, undo, assert restored.
+This catches undo bugs that asserting forward-state alone would miss.
 """
+
+from dataclasses import asdict
+import copy
 
 from game import cards as c
 from game import engine as e
 from game import moves as m
 from game import state as s
+from game.undo import undo_move, kill_minion
 
+
+# ----------------------------------------------------------------------
+# Helpers
+# ----------------------------------------------------------------------
 
 def make_empty_state(
-    p0_hand=None,
-    p0_deck=None,
-    p0_board=None,
-    p0_mana=10,
-    p0_hp=20,
-    p1_hand=None,
-    p1_deck=None,
-    p1_board=None,
-    p1_mana=10,
-    p1_hp=20,
+    p0_hand=None, p0_deck=None, p0_board=None, p0_mana=10, p0_hp=20,
+    p1_hand=None, p1_deck=None, p1_board=None, p1_mana=10, p1_hp=20,
     current_player=0,
 ):
-    """Helper: build a GameState with whatever you want to test."""
     p0 = s.PlayerState(
-        hp=p0_hp,
-        max_hp=20,
-        mana=p0_mana,
-        max_mana=p0_mana,
-        hand=p0_hand or [],
-        deck=p0_deck or [],
-        board=p0_board or [],
+        hp=p0_hp, max_hp=20, mana=p0_mana, max_mana=p0_mana,
+        hand=p0_hand or [], deck=p0_deck or [], board=p0_board or [],
     )
     p1 = s.PlayerState(
-        hp=p1_hp,
-        max_hp=20,
-        mana=p1_mana,
-        max_mana=p1_mana,
-        hand=p1_hand or [],
-        deck=p1_deck or [],
-        board=p1_board or [],
+        hp=p1_hp, max_hp=20, mana=p1_mana, max_mana=p1_mana,
+        hand=p1_hand or [], deck=p1_deck or [], board=p1_board or [],
     )
     return s.GameState(players=(p0, p1), current_player=current_player)
 
 
 def make_minion(attack, health, taunt=False, can_attack=True, card=None):
-    """Helper: build a Minion directly on a board, bypassing PlayMinion."""
-    card_name = card or c.CardName.ACOLYTE_OF_PAIN  # arbitrary default
+    card_name = card or c.CardName.ACOLYTE_OF_PAIN
     return s.Minion(
-        card=card_name,
-        attack=attack,
-        health=health,
-        max_health=health,
-        taunt=taunt,
-        can_attack=can_attack,
+        card=card_name, attack=attack, health=health,
+        max_health=health, taunt=taunt, can_attack=can_attack,
     )
+
+
+def assert_round_trip(state, move, label=""):
+    """Apply move, undo, assert state restored."""
+    before = asdict(state)
+    undo = e.apply_move(state, move)
+    e.apply_move  # just touching to avoid unused warning
+    undo_move(state, undo)
+    after = asdict(state)
+    assert before == after, f"Round-trip failed for {label}: state not restored"
 
 
 # ----------------------------------------------------------------------
@@ -66,143 +65,227 @@ def test_play_minion_costs_mana():
     cost = c.CARD_DEFS[card_name].cost
     state = make_empty_state(p0_hand=[card_name], p0_mana=10)
 
-    new_state = e.apply_move(state, m.PlayMinion(hand_index=0, board_position=0))
+    e.apply_move(state, m.PlayMinion(hand_index=0, board_position=0))
 
-    assert new_state.players[0].mana == 10 - cost, (
-        f"Expected mana {10 - cost}, got {new_state.players[0].mana}"
+    assert state.players[0].mana == 10 - cost, (
+        f"Expected mana {10 - cost}, got {state.players[0].mana}"
     )
-    assert len(new_state.players[0].hand) == 0, "Card should leave hand"
-    assert len(new_state.players[0].board) == 1, "Minion should be on board"
-    print("✓ test_play_minion_costs_mana")
+    assert len(state.players[0].hand) == 0, "Card should leave hand"
+    assert len(state.players[0].board) == 1, "Minion should be on board"
+    print("test_play_minion_costs_mana passed")
 
 
 def test_played_minion_has_summoning_sickness():
-    card_name = c.CardName.ACOLYTE_OF_PAIN
-    state = make_empty_state(p0_hand=[card_name], p0_mana=10)
+    state = make_empty_state(p0_hand=[c.CardName.ACOLYTE_OF_PAIN], p0_mana=10)
 
-    new_state = e.apply_move(state, m.PlayMinion(hand_index=0, board_position=0))
+    e.apply_move(state, m.PlayMinion(hand_index=0, board_position=0))
 
-    assert new_state.players[0].board[0].can_attack is False, (
-        "Newly played minion should not be able to attack"
-    )
-    print("✓ test_played_minion_has_summoning_sickness")
+    assert state.players[0].board[0].can_attack is False
+    print("test_played_minion_has_summoning_sickness passed")
 
 
 def test_attack_kills_both_when_equal():
-    # 3/3 attacks 3/3 → both die
-    attacker = make_minion(3, 3)
-    defender = make_minion(3, 3)
-    state = make_empty_state(p0_board=[attacker], p1_board=[defender])
-
-    new_state = e.apply_move(
-        state, m.Attack(attacker_index=0, target_index=0)
+    state = make_empty_state(
+        p0_board=[make_minion(3, 3)],
+        p1_board=[make_minion(3, 3)],
     )
 
-    assert len(new_state.players[0].board) == 0, "Attacker should be dead"
-    assert len(new_state.players[1].board) == 0, "Defender should be dead"
-    print("✓ test_attack_kills_both_when_equal")
+    e.apply_move(state, m.Attack(attacker_index=0, target_index=0))
+
+    assert len(state.players[0].board) == 0
+    assert len(state.players[1].board) == 0
+    print("test_attack_kills_both_when_equal passed")
 
 
 def test_attack_only_kills_weaker():
-    # 5/5 attacks 3/3 → defender dies, attacker survives at 2 HP
-    attacker = make_minion(5, 5)
-    defender = make_minion(3, 3)
-    state = make_empty_state(p0_board=[attacker], p1_board=[defender])
-
-    new_state = e.apply_move(
-        state, m.Attack(attacker_index=0, target_index=0)
+    state = make_empty_state(
+        p0_board=[make_minion(5, 5)],
+        p1_board=[make_minion(3, 3)],
     )
 
-    assert len(new_state.players[0].board) == 1, "Attacker should survive"
-    assert new_state.players[0].board[0].health == 2, "Attacker should be at 2 HP"
-    assert len(new_state.players[1].board) == 0, "Defender should be dead"
-    print("✓ test_attack_only_kills_weaker")
+    e.apply_move(state, m.Attack(attacker_index=0, target_index=0))
+
+    assert len(state.players[0].board) == 1
+    assert state.players[0].board[0].health == 2
+    assert len(state.players[1].board) == 0
+    print("test_attack_only_kills_weaker passed")
 
 
 def test_attack_hero_reduces_hp():
-    attacker = make_minion(4, 4)
-    state = make_empty_state(p0_board=[attacker], p1_hp=20)
+    state = make_empty_state(p0_board=[make_minion(4, 4)], p1_hp=20)
 
-    new_state = e.apply_move(state, m.AttackHero(attacker_index=0))
+    e.apply_move(state, m.AttackHero(attacker_index=0))
 
-    assert new_state.players[1].hp == 16, (
-        f"Expected enemy hero at 16 HP, got {new_state.players[1].hp}"
-    )
-    print("✓ test_attack_hero_reduces_hp")
+    assert state.players[1].hp == 16
+    print("test_attack_hero_reduces_hp passed")
 
 
 def test_attack_hero_lethal_sets_winner():
-    attacker = make_minion(20, 20)
-    state = make_empty_state(p0_board=[attacker], p1_hp=5)
+    state = make_empty_state(p0_board=[make_minion(20, 20)], p1_hp=5)
 
-    new_state = e.apply_move(state, m.AttackHero(attacker_index=0))
+    e.apply_move(state, m.AttackHero(attacker_index=0))
 
-    assert new_state.winner == 0, (
-        f"Expected player 0 to win, got winner={new_state.winner}"
-    )
-    print("✓ test_attack_hero_lethal_sets_winner")
+    assert state.winner == 0
+    print("test_attack_hero_lethal_sets_winner passed")
 
 
 def test_hero_power_heals_friendly_hero():
     state = make_empty_state(p0_hp=10, p0_mana=10)
 
-    new_state = e.apply_move(state, m.HeroPower(target=m.FriendlyHero()))
+    e.apply_move(state, m.HeroPower(target=m.FriendlyHero()))
 
-    assert new_state.players[0].hp == 12, (
-        f"Expected hero at 12 HP, got {new_state.players[0].hp}"
-    )
-    assert new_state.players[0].mana == 8, "Hero power should cost 2 mana"
-    assert new_state.players[0].hero_power_used is True
-    print("✓ test_hero_power_heals_friendly_hero")
+    assert state.players[0].hp == 12
+    assert state.players[0].mana == 8
+    assert state.players[0].hero_power_used is True
+    print("test_hero_power_heals_friendly_hero passed")
 
 
 def test_hero_power_caps_at_max_hp():
     state = make_empty_state(p0_hp=19, p0_mana=10)
 
-    new_state = e.apply_move(state, m.HeroPower(target=m.FriendlyHero()))
+    e.apply_move(state, m.HeroPower(target=m.FriendlyHero()))
 
-    assert new_state.players[0].hp == 20, "Heal should cap at max_hp"
-    print("✓ test_hero_power_caps_at_max_hp")
+    assert state.players[0].hp == 20
+    print("test_hero_power_caps_at_max_hp passed")
 
 
 def test_end_turn_switches_player():
     state = make_empty_state(current_player=0)
 
-    new_state = e.apply_move(state, m.EndTurn())
+    e.apply_move(state, m.EndTurn())
 
-    assert new_state.current_player == 1, "Turn should switch to player 1"
-    print("✓ test_end_turn_switches_player")
+    assert state.current_player == 1
+    print("test_end_turn_switches_player passed")
 
 
 def test_end_turn_clears_summoning_sickness():
-    sick_minion = make_minion(3, 3, can_attack=False)
-    state = make_empty_state(p1_board=[sick_minion], current_player=0)
-
-    # After end turn, it becomes player 1's turn — their minion should be ready
-    new_state = e.apply_move(state, m.EndTurn())
-
-    assert new_state.players[1].board[0].can_attack is True, (
-        "Minion should be able to attack on its owner's next turn"
+    state = make_empty_state(
+        p1_board=[make_minion(3, 3, can_attack=False)],
+        current_player=0,
     )
-    print("✓ test_end_turn_clears_summoning_sickness")
+
+    e.apply_move(state, m.EndTurn())
+
+    assert state.players[1].board[0].can_attack is True
+    print("test_end_turn_clears_summoning_sickness passed")
 
 
-def test_apply_move_does_not_mutate_input():
-    """Critical for MCTS: the original state must be unchanged."""
+def test_apply_move_then_undo_restores_state():
+    """v2 replacement for the old 'does not mutate input' test.
+    The whole point is that we mutate -- but undo restores."""
     card_name = c.CardName.ACOLYTE_OF_PAIN
     state = make_empty_state(p0_hand=[card_name], p0_mana=10)
-    original_hand_len = len(state.players[0].hand)
-    original_mana = state.players[0].mana
+
+    assert_round_trip(state, m.PlayMinion(hand_index=0, board_position=0),
+                      label="PlayMinion round-trip")
+    print("test_apply_move_then_undo_restores_state passed")
+
+
+def test_doomsayer_wipes_on_start_of_turn():
+    state = make_empty_state(
+        p0_board=[make_minion(3, 3)],
+        p1_board=[make_minion(0, 7, card=c.CardName.DOOMSAYER, can_attack=False)],
+        current_player=0,
+    )
+
+    e.apply_move(state, m.EndTurn())
+
+    assert state.players[0].board == []
+    assert state.players[1].board == []
+    print("test_doomsayer_wipes_on_start_of_turn passed")
+
+
+def test_alexstrasza_hp_and_dmg():
+    state = make_empty_state(
+        p0_hand=[c.CardName.ALEXSTRASZA_GUARDIAN_OF_LIFE],
+        p0_mana=10, p0_hp=10, p1_hp=29,
+        current_player=0,
+    )
 
     e.apply_move(state, m.PlayMinion(hand_index=0, board_position=0))
+    assert state.players[0].hp == 15, (
+        f"expected 15, got {state.players[0].hp}"
+    )
 
-    assert len(state.players[0].hand) == original_hand_len, (
-        "Original state's hand should not change!"
+    state.players[0].hero_power_power = 100
+    e.apply_move(state, m.HeroPower(target=m.FriendlyHero()))
+    assert state.players[1].hp == 14, (
+        f"expected 14, got {state.players[1].hp}"
     )
-    assert state.players[0].mana == original_mana, (
-        "Original state's mana should not change!"
+    print("test_alexstrasza_hp_and_dmg passed")
+
+
+# ----------------------------------------------------------------------
+# Round-trip tests (apply + undo, assert restored)
+# ----------------------------------------------------------------------
+
+def test_round_trip_attack_both_die():
+    state = make_empty_state(
+        p0_board=[make_minion(3, 3)],
+        p1_board=[make_minion(3, 3)],
     )
-    print("✓ test_apply_move_does_not_mutate_input")
+    assert_round_trip(state, m.Attack(0, 0), label="attack both die")
+    print("test_round_trip_attack_both_die passed")
+
+
+def test_round_trip_attack_attacker_dies():
+    state = make_empty_state(
+        p0_board=[make_minion(1, 1)],
+        p1_board=[make_minion(5, 5)],
+    )
+    assert_round_trip(state, m.Attack(0, 0), label="attack attacker dies")
+    print("test_round_trip_attack_attacker_dies passed")
+
+
+def test_round_trip_attack_target_dies():
+    state = make_empty_state(
+        p0_board=[make_minion(5, 5)],
+        p1_board=[make_minion(1, 1)],
+    )
+    assert_round_trip(state, m.Attack(0, 0), label="attack target dies")
+    print("test_round_trip_attack_target_dies passed")
+
+
+def test_round_trip_attack_both_survive():
+    state = make_empty_state(
+        p0_board=[make_minion(2, 5)],
+        p1_board=[make_minion(2, 5)],
+    )
+    assert_round_trip(state, m.Attack(0, 0), label="attack both survive")
+    print("test_round_trip_attack_both_survive passed")
+
+
+def test_round_trip_attack_hero():
+    state = make_empty_state(p0_board=[make_minion(4, 4)], p1_hp=20)
+    assert_round_trip(state, m.AttackHero(attacker_index=0), label="attack hero")
+    print("test_round_trip_attack_hero passed")
+
+
+def test_round_trip_hero_power():
+    state = make_empty_state(p0_hp=10, p0_mana=10)
+    assert_round_trip(state, m.HeroPower(target=m.FriendlyHero()), label="hero power friendly")
+    print("test_round_trip_hero_power passed")
+
+
+def test_round_trip_doomsayer():
+    state = make_empty_state(
+        p0_board=[make_minion(3, 3)],
+        p1_board=[make_minion(0, 7, card=c.CardName.DOOMSAYER, can_attack=False)],
+        current_player=0,
+    )
+    assert_round_trip(state, m.EndTurn(), label="end turn with doomsayer")
+    print("test_round_trip_doomsayer passed")
+
+
+def test_round_trip_alexstrasza_battlecry():
+    state = make_empty_state(
+        p0_hand=[c.CardName.ALEXSTRASZA_GUARDIAN_OF_LIFE],
+        p0_mana=10, p0_hp=10,
+        current_player=0,
+    )
+    assert_round_trip(state, m.PlayMinion(hand_index=0, board_position=0),
+                      label="play alexstrasza")
+    print("test_round_trip_alexstrasza_battlecry passed")
 
 
 # ----------------------------------------------------------------------
@@ -211,6 +294,7 @@ def test_apply_move_does_not_mutate_input():
 
 def run_all_tests():
     tests = [
+        # Forward-only tests (assert state after apply)
         test_play_minion_costs_mana,
         test_played_minion_has_summoning_sickness,
         test_attack_kills_both_when_equal,
@@ -221,7 +305,19 @@ def run_all_tests():
         test_hero_power_caps_at_max_hp,
         test_end_turn_switches_player,
         test_end_turn_clears_summoning_sickness,
-        test_apply_move_does_not_mutate_input,
+        test_apply_move_then_undo_restores_state,
+        test_doomsayer_wipes_on_start_of_turn,
+        test_alexstrasza_hp_and_dmg,
+
+        # Round-trip tests
+        test_round_trip_attack_both_die,
+        test_round_trip_attack_attacker_dies,
+        test_round_trip_attack_target_dies,
+        test_round_trip_attack_both_survive,
+        test_round_trip_attack_hero,
+        test_round_trip_hero_power,
+        test_round_trip_doomsayer,
+        test_round_trip_alexstrasza_battlecry,
     ]
     passed = 0
     failed = 0
@@ -230,10 +326,10 @@ def run_all_tests():
             test()
             passed += 1
         except AssertionError as ex:
-            print(f"✗ {test.__name__}: {ex}")
+            print(f"FAIL {test.__name__}: {ex}")
             failed += 1
         except Exception as ex:
-            print(f"✗ {test.__name__}: CRASHED — {type(ex).__name__}: {ex}")
+            print(f"CRASH {test.__name__}: {type(ex).__name__}: {ex}")
             failed += 1
     print(f"\n{passed} passed, {failed} failed")
 
