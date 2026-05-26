@@ -24,7 +24,7 @@ class OpponentModel:
             case _:
                 return
             
-    def _update_on_end_turn(self, state:GameState):
+    def _update_on_end_turn(self, state:GameState):#NOTE: IF A CARD IS PLAYABLE AND THE OPP ENDS TURN WITH ENOUGH MANA TO PLAY IT BUT DOSNT THE LIKELYHOOD SHOULD DECREASE OR AT LEAST TRY THIS APPROACH LATER
         me = state.players[1-state.current_player]
         opponent = state.players[state.current_player]
 
