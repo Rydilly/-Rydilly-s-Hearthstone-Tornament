@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 
+
 class CardName(Enum):
     BLOODMAGE_THALNOS = "Bloodmage Thalnos"
     CRAZED_ALCHEMIST = "Crazed Alchemist"
@@ -19,11 +20,13 @@ class CardDef:
     """
     Immutable card definition
     """
+    
     name: CardName
     cost: int
     attack: int
     health: int
     taunt: bool = False
+    #battlecry:function=None#scrapped for now
 
 CARD_DEFS: dict[CardName, CardDef] = {
     CardName.BLOODMAGE_THALNOS: CardDef(CardName.BLOODMAGE_THALNOS,2,1,1),
