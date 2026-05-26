@@ -1,6 +1,7 @@
 from enum import IntEnum
 from game.state import GameState, PlayerState, Minion
 from game.cards import CardName
+from game import state as s
 
 class Op(IntEnum):
     #game stats
@@ -18,11 +19,12 @@ class Op(IntEnum):
     DEL_PLAYER_DECK=56
     INSERT_PLAYER_HAND=57
     DEL_PLAYER_HAND=58
-    SPAWN_CARD=59
-    SET_HERO_POWER_USED=60
-    SET_HERO_POWER_POWER=61
-    SET_FATIGUE_COUNTER=62
-    SET_ALEXSTRASZA_GUARDIAN_OF_LIFE_CHARGES=63
+    SET_PLAYER_HAND=59
+    SPAWN_CARD=60
+    SET_HERO_POWER_USED=61
+    SET_HERO_POWER_POWER=62
+    SET_FATIGUE_COUNTER=63
+    SET_ALEXSTRASZA_GUARDIAN_OF_LIFE_CHARGES=64
     
     
 
@@ -81,6 +83,10 @@ def undo_one(state:GameState, op):
             me:PlayerState = state.players[player_idx]
             me.hand.insert(hand_idx,card)
 
+        case(Op.SET_PLAYER_HAND, player_idx, hand):
+            me:PlayerState = state.players[player_idx]
+            me.hand=hand
+
         case(Op.DEL_PLAYER_HAND,player_idx,hand_idx):
             me:PlayerState = state.players[player_idx]
             me.hand.pop(hand_idx)
@@ -132,4 +138,11 @@ def undo_move(state, undo_record):
     for op in reversed(undo_record):
         undo_one(state,op)
 
+
+#This dosnt feel like a good fit but engine and effects both need kill_minion so its in here to avoid circular import
+def kill_minion(state:s.GameState, player_idx, board_idx, undo:list):
+    mn = state.players[player_idx].board[board_idx]
+    undo.append((Op.BOARD_INSERT,player_idx,board_idx,mn))
+    #insert deathrattle effect here when rdy
+    state.players[player_idx].board.pop(board_idx)
 

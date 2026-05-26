@@ -4,12 +4,12 @@ import copy
 
 class Sample_Hand():
     def __init__(self, unseen:Counter):
-        self.unseen= copy.deepcopy(unseen)
+        self.unseen= unseen.copy()#shallow copy is fine because the keys are immutable and the keys are ints which are also immutable
         self.hand=[]
 
     def draw(self, n_cards=1):
         for _ in range(n_cards):
-            if len(self.unseen)<1:
+            if sum(self.unseen.values())<1:#cant use len because counter still holds items when the counter ==0
                 break
             next_card = random.choice(list(self.unseen.elements()))
             self.unseen[next_card]-=1

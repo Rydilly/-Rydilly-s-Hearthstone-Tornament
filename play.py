@@ -14,13 +14,15 @@ def play_game(bot_0: Bot, bot_1: Bot, max_turns: int=100, verbose: bool=False)->
         move = current_bot.pick_move(state)
         if isinstance(move, EndTurn):
             turn_count+=1
-            print(turn_count)
+            #print(turn_count)
 
         if verbose:
             print(f"P{state.current_player} ({current_bot.name}): {move}")
 
-        state = apply_move(state, move)
+        apply_move(state, move)
         other_bot.observe(state, move)
+
+        #print(f"after move hand:{state.players[1-state.current_player].hand}")
 
         if turn_count%50==0:
             print(f"{turn_count}, winner={state.winner}, p0_hp:{state.players[0].hp}, p1_hp:{state.players[1].hp}")
@@ -95,7 +97,7 @@ if __name__=="__main__":
 
 
 
-    n_games = 1
+    n_games = 20
     starting_cache_1 = len(Lethal_Bot.move_cache)
 
 

@@ -9,6 +9,8 @@ from game.engine import apply_move, legal_moves
 from game.cards import CardName
 import math
 from bots.sample_hand import Sample_Hand
+from game.undo import undo_move, Op as UndoOp
+import math
 
 
 
@@ -18,6 +20,7 @@ class Sampling_Bot_V2(Bot):
         self.my_data = OpponentModel() if my_data is None else my_data
         self.depth=depth
         self.in_sim = in_sim
+
 
     def observe(self, state, move):
         self.opp_data.observe(state,move)
@@ -41,21 +44,27 @@ class Sampling_Bot_V2(Bot):
             
             scores = []
             for _ in r:
-                sim_state = apply_move(state,mv)
+                undo = apply_move(state,mv)
                 sh = Sample_Hand(self.opp_data.unseen)
                 sh.draw(len(opp.hand))
-                sim_state = self.replace_opp_hand(sim_state, sh.hand ,opp_idx)
-                sim_state = self.sim_opps_turn(sim_state)
+                self.replace_opp_hand(state,sh.hand,opp_idx,undo)
+                self.sim_opps_turn(state,undo)
     
                 
-                mv2_legal = legal_moves(sim_state)
-                if not mv2_legal or sim_state.winner is not None:
-                    score = self.evaluate(sim_state, my_idx)
-                else:
-                    score = max(
-                        self.evaluate(apply_move(sim_state,mv2), my_idx) for mv2 in mv2_legal
-                    )
+                score = -math.inf
+                mv2_legal = legal_moves(state)
+                if not mv2_legal or state.winner is not None:
+                    score = self.evaluate(state, my_idx)
+                else:    
+                    for mv2 in mv2_legal:
+                        tmp_undo = apply_move(state,mv2) 
+                        sc = self.evaluate(state,my_idx)
+                        if sc>score:
+                            score = sc
+                        undo_move(state,tmp_undo)
+                           
                 scores.append(score)
+                undo_move(state, undo)
                 
 
                 
@@ -79,18 +88,21 @@ class Sampling_Bot_V2(Bot):
         return best_move[0]
         
 
-    def replace_opp_hand(self, game_state: GameState, new_hand, opp_idx:int):
-        new_game_state = copy.deepcopy(game_state)
-        new_game_state.players[opp_idx].hand =new_hand
-        return new_game_state
+    def replace_opp_hand(self, game_state: GameState, new_hand, opp_idx:int, undo:list):
+        opp = game_state.players[opp_idx]
+        
+        undo.append((UndoOp.SET_PLAYER_HAND,opp_idx,opp.hand))
+        game_state.players[opp_idx].hand =new_hand
+
+        return 
     
-    def sim_opps_turn(self, sim_state:GameState)->GameState:
+    def sim_opps_turn(self, sim_state:GameState, undo:list)->GameState:
         cur_move = None
-        temp_brain = Sampling_Bot_V2(depth=self.depth-1, opp_data=copy.deepcopy(self.my_data), my_data=copy.deepcopy(self.opp_data), in_sim=True)
+        temp_brain = Sampling_Bot_V2(depth=self.depth-1, opp_data=self.my_data, my_data=self.opp_data, in_sim=True)
         while not isinstance(cur_move, EndTurn) and (sim_state.winner is None) and not (self.depth<1):
             cur_move = temp_brain.pick_move(sim_state)
-            sim_state = apply_move(sim_state, cur_move)   
-        return sim_state
+            undo.extend(apply_move(sim_state, cur_move))#apply_move returns a undo:list   
+        return 
 
     def evaluate(self, state: GameState, my_idx:int)->float:
         me = state.players[my_idx]
@@ -124,17 +136,13 @@ if __name__=="__main__":
     state = new_game(seed=42)
     fake_hand = Sample_Hand(Counter(STARTER_DECK))
     fake_hand.draw(4)
+    sUndo = []
 
     profiler = cProfile.Profile()
     profiler.enable()
     s.pick_move(state)
     profiler.disable()
     pstats.Stats(profiler).sort_stats('cumulative').print_stats(20)
-
-    new_state=s.replace_opp_hand(state, fake_hand, opp_idx=1)
-
-    print("new state opp hand:", new_state.players[1].hand)
-    print("og opp hand:", state.players[1].hand)
 
   
     #print(s.sample_hand(4))
@@ -143,11 +151,12 @@ if __name__=="__main__":
     s = Sampling_Bot_V2()
     v = ValueBot()
     state = new_game(seed=42)
+    undo = []
 
     print(f"Before: {state.players[0].hp, state.players[1].hp, state.current_player}")
     
-    after = s.sim_opps_turn(state)
-    print(f"after: {after.players[0].hp, state.players[1].hp, after.current_player}")
+    s.sim_opps_turn(state,undo)
+    print(f"after: {state.players[0].hp, state.players[1].hp, state.current_player}")
 
     print("\n\n")
 
@@ -166,7 +175,7 @@ if __name__=="__main__":
     for _ in range(20):
         if state.winner is not None: break
         move = v.pick_move(state)
-        state = apply_move(state, move)
+        apply_move(state, move)
 
     print(state.render())
     print(f"opp hand size: {len(state.players[1-state.current_player].hand)}")

@@ -4,7 +4,7 @@ from game import cards as c
 import copy
 import random
 from game import effects
-from undo import Op as UndoOp
+from game.undo import Op as UndoOp,kill_minion
 
 
 def legal_moves(state: s.GameState) -> list[m.Move]:
@@ -56,12 +56,6 @@ def legal_moves(state: s.GameState) -> list[m.Move]:
 
 
 HEAL_AMOUNT = 2
-
-def kill_minion(state:s.GameState, player_idx, board_idx, undo:list):
-    mn = state.players[player_idx].board[board_idx]
-    undo.append((UndoOp.BOARD_INSERT,player_idx,board_idx,mn))
-    #insert deathrattle effect here when rdy
-    state.players[player_idx].board.pop(board_idx)
 
 def apply_move(state: s.GameState, move: m.Move) -> list:
     """Apply a move and mutate an undo:list. Original is mutated. undo list is returned"""
@@ -286,22 +280,42 @@ def new_game(deck: list[c.CardName]|None = None, seed:int|None=None)->s.GameStat
     return state
 
 if __name__=="__main__":
-    from game.moves import EndTurn,PlayMinion
+    from game.moves import EndTurn,PlayMinion,HeroPower,FriendlyHero
     from game.undo import undo_move
     from dataclasses import asdict
+    from game.cards import CardName
 
     state = new_game()
     state.players[0].max_mana=10
     state.players[1].max_mana=10
     cp = copy.deepcopy(state)
     undo = []
+    
+    #print(state.players[state.current_player].hand)
+
     undo.append(apply_move(state,EndTurn()))
     undo.append(apply_move(state,EndTurn()))
     undo.append(apply_move(state,PlayMinion(0,0)))
-    undo_move(state,undo.pop())
-    undo_move(state,undo.pop())
-    undo_move(state,undo.pop())
+    #play alexstrasza
+
+    state.players[state.current_player].hand.append(CardName.ALEXSTRASZA_GUARDIAN_OF_LIFE)
+    state.players[1-state.current_player].hand.append(CardName.ALEXSTRASZA_GUARDIAN_OF_LIFE)
+    cp.players[state.current_player].hand.append(CardName.ALEXSTRASZA_GUARDIAN_OF_LIFE)
+    cp.players[1-state.current_player].hand.append(CardName.ALEXSTRASZA_GUARDIAN_OF_LIFE)
+    undo.append(apply_move(state,PlayMinion(len(state.players[state.current_player].hand)-1,1)))
+    
+
+
+    while state.players[state.current_player].hp<state.players[state.current_player].max_hp:
+        undo.append(apply_move(state,HeroPower(FriendlyHero())))
+    assert state.players[1-state.current_player].hp == state.players[1-state.current_player].max_hp-15,f"opp current hp: {state.players[1-state.current_player].hp}\nmy current hp:{state.players[state.current_player].hp}\nMy Board:{state.players[state.current_player].board}"
+
+    while len(undo)>0:
+        undo_move(state,undo.pop())
+
+
     assert asdict(cp) == asdict(state)
     #asdict is slow but easy way to compare 2 instances
+
 
 

@@ -13,6 +13,9 @@ class OpponentModel:
         self.weights:dict[CardName,float]= {card: 1.0 for card in self.unseen}
 
     def observe(self, state:GameState, move):
+
+        #print(f"OBSERVE: cp={state.current_player}, MOVE={move}")
+
         match move:
             case PlayMinion(_,board_position):
                 self.observe_play(state.players[state.current_player].board[board_position].card)
@@ -37,6 +40,9 @@ class OpponentModel:
 
 
     def observe_play(self, card: CardName)->None:
+
+        #print(f"OBSERVING {card.name}, UNSEEN COUNT:{self.unseen[card]}")
+
         self.weights[card]=1#if opponent plays a card it resets our assumption of if it is in their hand
         assert self.unseen[card]>0#in current model we know whats in the opponents deck
         self.unseen[card]-=1    
@@ -46,7 +52,7 @@ class OpponentModel:
         """
         Probability at least 1 copy of card is in hand
         """
-        if self.unseen==0:
+        if self.unseen[card.name]==0:
             return 0
         amount_of_card = self.unseen[card]
         unseen_size = sum(self.unseen.values())
