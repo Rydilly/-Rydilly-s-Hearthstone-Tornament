@@ -39,16 +39,21 @@ class GameState:
     winner: Optional[int] = None
 
     def state_key(self):
-        p = self.players[self.current_player]
-        o = self.players[1-self.current_player]
+        p:PlayerState = self.players[self.current_player]
+        o:PlayerState = self.players[1-self.current_player]
         return (
             #p.hp,p.mana,p.hero_power_used,
             #tuple(p.hand),
             #tuple(p.deck),#dont need for minion with no spells ond no ability version
+            p.alexstrasza_guardian_of_life_charges,
+            p.mana,
+            p.hero_power_used,
+            p.hero_power_power,
+            tuple(sorted(card.value for card in p.hand)),#all the data each card holds
             tuple((m.attack, m.health, m.can_attack) for m in p.board),
             o.hp,
-            #o.fatigue_counter,
-            tuple((m.attack, m.health, m.can_attack)for m in o.board if m.taunt==True)
+            o.fatigue_counter,
+            tuple((m.attack, m.health)for m in o.board if m.taunt==True)
         )
 
     def __repr__(self) -> str:

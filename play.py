@@ -14,7 +14,7 @@ def play_game(bot_0: Bot, bot_1: Bot, max_turns: int=100, verbose: bool=False)->
         move = current_bot.pick_move(state)
         if isinstance(move, EndTurn):
             turn_count+=1
-            #print(turn_count)
+            print(f"TURN_COUNT:{turn_count}")
 
         if verbose:
             print(f"P{state.current_player} ({current_bot.name}): {move}")
@@ -84,7 +84,6 @@ if __name__=="__main__":
     from bots.lethal_bot import Lethal_Bot
     from bots.doomsayer_smart_bot import Doomsayer_smart_bot as doom
     import time as t
-    from bots.sampling_bot_v1 import Sampling_Bot
     from bots.sampling_bot_V2 import Sampling_Bot_V2
 
 
@@ -93,6 +92,8 @@ if __name__=="__main__":
     #main()
     l = Lethal_Bot()
     a = AgroBot()
+    d = doom()
+
     #play_game(a,l,verbose=True)
 
 
@@ -102,7 +103,7 @@ if __name__=="__main__":
 
 
     clock = t.perf_counter()
-    print(run_tournament(ValueBot,Sampling_Bot_V2,n_games))
+    print(run_tournament(doom,Sampling_Bot_V2,n_games))
     avg_time_1 = (t.perf_counter()-clock)/n_games
     print(f"AVG: {avg_time_1}'s per game")
 

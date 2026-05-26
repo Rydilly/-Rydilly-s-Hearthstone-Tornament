@@ -1,8 +1,6 @@
 from bots.base import Bot
 from bots.opponent_model import OpponentModel
-import random 
 from game.state import GameState
-import copy
 from bots.value_bot import ValueBot
 from game.moves import Move, EndTurn, PlayMinion
 from game.engine import apply_move, legal_moves
@@ -11,6 +9,8 @@ import math
 from bots.sample_hand import Sample_Hand
 from game.undo import undo_move, Op as UndoOp
 import math
+from bots.lethal_bot import Lethal_Bot
+
 
 
 
@@ -20,6 +20,7 @@ class Sampling_Bot_V2(Bot):
         self.my_data = OpponentModel() if my_data is None else my_data
         self.depth=depth
         self.in_sim = in_sim
+        self.leathal_finder = Lethal_Bot()
 
 
     def observe(self, state, move):
@@ -28,6 +29,10 @@ class Sampling_Bot_V2(Bot):
     def pick_move(self, state:GameState):
         #print(self, state)
         moves = legal_moves(state)
+
+        lethal_combo = self.leathal_finder.find_lethal(state)
+        if lethal_combo is not None:
+            return lethal_combo[0]
 
         me = state.players[state.current_player]
         opp = state.players[1-state.current_player]
