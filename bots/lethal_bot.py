@@ -2,7 +2,7 @@ from game.engine import legal_moves
 #from bots.base import Bot
 from game.state import GameState
 from game.moves import Move
-from game.moves import EndTurn
+from game.moves import EndTurn, Attack
 from bots.base import Bot
 from game.engine import apply_move
 from bots.value_bot import ValueBot
@@ -72,9 +72,10 @@ class Lethal_Bot(Bot):
             self.lethal_move_tree[key]=[]
             return []
         
+        opp = state.players[1-state.current_player]
         for mv in legal_moves(state):
-            #print(moves)
-            if isinstance(mv, EndTurn):
+            #print(mv)
+            if (isinstance(mv, EndTurn) and opp.hp>opp.fatigue_counter) or (isinstance(mv,Attack) and opp.board[mv.target_index].taunt==False):#if the move is end turn or attacking a minion with no taunt
                 continue
 
             tmp_undo = apply_move(state,mv)

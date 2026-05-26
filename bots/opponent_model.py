@@ -44,7 +44,7 @@ class OpponentModel:
         #print(f"OBSERVING {card.name}, UNSEEN COUNT:{self.unseen[card]}")
 
         self.weights[card]=1#if opponent plays a card it resets our assumption of if it is in their hand
-        assert self.unseen[card]>0#in current model we know whats in the opponents deck
+        assert self.unseen[card]>0, f"\nUNSEEN:{self.unseen}"#in current model we know whats in the opponents deck
         self.unseen[card]-=1    
         self.played[card]+=1
 

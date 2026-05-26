@@ -31,7 +31,8 @@ class Sampling_Bot_V2(Bot):
         moves = legal_moves(state)
 
         lethal_combo = self.lethal_finder.find_lethal(state)
-        if lethal_combo is not None:
+        if lethal_combo:
+            print(F"LETHAL FOUND!! \nlethal combo:{lethal_combo}")
             return lethal_combo[0]
 
         me = state.players[state.current_player]
