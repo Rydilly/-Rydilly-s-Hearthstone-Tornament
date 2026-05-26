@@ -20,7 +20,7 @@ class Sampling_Bot_V2(Bot):
         self.my_data = OpponentModel() if my_data is None else my_data
         self.depth=depth
         self.in_sim = in_sim
-        self.leathal_finder = Lethal_Bot()
+        self.lethal_finder = Lethal_Bot()
 
 
     def observe(self, state, move):
@@ -30,7 +30,7 @@ class Sampling_Bot_V2(Bot):
         #print(self, state)
         moves = legal_moves(state)
 
-        lethal_combo = self.leathal_finder.find_lethal(state)
+        lethal_combo = self.lethal_finder.find_lethal(state)
         if lethal_combo is not None:
             return lethal_combo[0]
 
