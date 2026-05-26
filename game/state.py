@@ -3,7 +3,7 @@ from typing import Optional
 from game import cards
 
 
-@dataclass
+@dataclass(slots=True)
 class Minion:
     """
     A minion on the board with dynamic stats.
@@ -16,9 +16,9 @@ class Minion:
     can_attack: bool
 
 
-@dataclass
+@dataclass(slots=True)
 class PlayerState:
-    alexstraza_guardian_of_life_charges = 0
+    alexstrasza_guardian_of_life_charges:int = 0
     hp: int = 30
     max_hp: int = 30
     mana: int = 0
@@ -31,7 +31,7 @@ class PlayerState:
     hero_power_power: int = 2
 
 
-@dataclass
+@dataclass(slots=True)
 class GameState:
     players: tuple[PlayerState, PlayerState]
     current_player: int

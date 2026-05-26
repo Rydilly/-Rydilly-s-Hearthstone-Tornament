@@ -4,6 +4,7 @@ from game import cards as c
 import copy
 import random
 from game import effects
+from undo import Op as UndoOp
 
 
 def legal_moves(state: s.GameState) -> list[m.Move]:
@@ -56,109 +57,198 @@ def legal_moves(state: s.GameState) -> list[m.Move]:
 
 HEAL_AMOUNT = 2
 
+def kill_minion(state:s.GameState, player_idx, board_idx, undo:list):
+    mn = state.players[player_idx].board[board_idx]
+    undo.append((UndoOp.BOARD_INSERT,player_idx,board_idx,mn))
+    #insert deathrattle effect here when rdy
+    state.players[player_idx].board.pop(board_idx)
 
-def apply_move(state: s.GameState, move: m.Move) -> s.GameState:
-    """Apply a move and return a NEW GameState. Original is not mutated."""
-
-    def _heal(current:s.PlayerState,target, heal):
-        match target:
-                case m.FriendlyHero():
-                    current.hp = min(current.hp + heal, current.max_hp)
-                    if current.hp==current.max_hp and current.alexstraza_guardian_of_life_charges>0:
-                        for _ in range(current.alexstraza_guardian_of_life_charges):
-                            new_state.players[1-state.current_player].hp-=15
-                        current.alexstraza_guardian_of_life_charges=0
-                case m.EnemyHero():
-                    other.hp = min(other.hp + heal, other.max_hp)
-                case m.FriendlyMinion(index=i):
-                    mn = current.board[i]
-                    mn.health = min(mn.health + heal, mn.max_health)
-                case m.EnemyMinion(index=i):
-                    mn = other.board[i]
-                    mn.health = min(mn.health + heal, mn.max_health)
-        return
-
-
-    new_state = copy.deepcopy(state)
-    current = new_state.players[new_state.current_player]
-    other = new_state.players[1 - new_state.current_player]
-
+def apply_move(state: s.GameState, move: m.Move) -> list:
+    """Apply a move and mutate an undo:list. Original is mutated. undo list is returned"""
+    undo=[]
+    me_idx = state.current_player
+    opp_idx = 1-state.current_player
+    me = state.players[me_idx]
+    opp = state.players[opp_idx]
+    
     match move:
-        case m.PlayMinion(hand_index=i, board_position=pos):
-            card_name = current.hand.pop(i)
-            card_def = c.CARD_DEFS[card_name]
-            current.mana -= card_def.cost
+        case m.EndTurn():
+            #flipping current player
+            undo.append((UndoOp.SET_CURRENT_PLAYER,me_idx))
+            state.current_player = 1-me_idx
+
+            #incrementing turn number
+            undo.append((UndoOp.SET_TURN_NUMBER,state.turn_number))
+            state.turn_number+=1
+            _start_turn(state,undo)
+
+
+        case m.PlayMinion(hand_idx,board_idx):
+            #removing the card from hand
+            card_name = me.hand.pop(hand_idx)
+            undo.append((UndoOp.INSERT_PLAYER_HAND,me_idx,hand_idx,card_name))
+
+            #card lookup
+            card_stats = c.CARD_DEFS[card_name]
+
+            #subtracting mana
+            undo.append((UndoOp.SET_PLAYER_MANA,me_idx,me.mana))
+            me.mana-=card_stats.cost
+
+            #checking and running battle cry
             if card_name in effects.INSTANT_BATTLECRIES:
-                effects.INSTANT_BATTLECRIES[card_name](new_state, new_state.current_player)
+                effects.INSTANT_BATTLECRIES[card_name](state,me_idx,undo)#its the battlecry responsibility to update undo
+
+            #building a minion. py garbage collector will clean up on undo
             new_minion = s.Minion(
                 card=card_name,
-                attack=card_def.attack,
-                health=card_def.health,
-                max_health=card_def.health,
-                taunt=card_def.taunt,
-                can_attack=False,
+                attack=card_stats.attack,
+                health=card_stats.health,
+                max_health=card_stats.health,
+                taunt=card_stats.taunt,
+                can_attack=False
             )
-            current.board.insert(pos, new_minion)
-
-        case m.Attack(attacker_index=ai, target_index=ti):
-            attacker = current.board[ai]
-            defender = other.board[ti]
-            defender.health -= attacker.attack
-            attacker.health -= defender.attack
-            attacker.can_attack = False
-            current.board = [mn for mn in current.board if mn.health > 0]
-            other.board = [mn for mn in other.board if mn.health > 0]
-
-        case m.AttackHero(attacker_index=ai):
-            attacker = current.board[ai]
-            other.hp -= attacker.attack
-            attacker.can_attack = False
-
-        case m.HeroPower(target=target):
-            current.mana -= 2
-            current.hero_power_used = True
-            heal = current.hero_power_power
-            _heal(current, target, heal)
             
-        case m.EndTurn():
-            new_state.current_player = 1 - new_state.current_player
-            new_state.turn_number += 1
-            _start_turn(new_state)
+            #insert minion onto board
+            undo.append((UndoOp.BOARD_DEL,me_idx,board_idx))
+            me.board.insert(board_idx,new_minion)
+   
 
-    _check_winner(new_state)
-    return new_state
+        case m.Attack(atta_idx, targ_idx):
+            attacker:s.Minion = me.board[atta_idx]
+            target:s.Minion = opp.board[targ_idx]
+            
+            #set new minion health
+            undo.append((UndoOp.SET_MINION_HEALTH,attacker,attacker.health))
+            undo.append((UndoOp.SET_MINION_HEALTH,target,target.health))
+            attacker.health-=target.attack
+            target.health-=attacker.attack
+
+            #Remove killed from board or update can_attack status
+            if attacker.health<1:
+                kill_minion(state,me_idx,atta_idx,undo)
+            else:
+                undo.append((UndoOp.SET_MINION_CAN_ATTACK,attacker,True))
+                attacker.can_attack=False
+            if target.health<1:
+                kill_minion(state,opp_idx,targ_idx,undo)
+
+
+        case m.AttackHero(atta_idx):
+            attacker=me.board[atta_idx]
+
+            #reducing hp
+            undo.append((UndoOp.SET_PLAYER_HP,opp_idx,opp.hp))
+            opp.hp-=attacker.attack
+
+            #update attack status
+            undo.append((UndoOp.SET_MINION_CAN_ATTACK,attacker,True))
+            attacker.can_attack=False
+            
+        case m.HeroPower(target):
+            
+            #update mana
+            undo.append((UndoOp.SET_PLAYER_MANA,me_idx,me.mana))
+            me.mana-=2
+
+            #update hero power used
+            undo.append((UndoOp.SET_HERO_POWER_USED,me_idx,False))
+            me.hero_power_used=True
+
+            match target:
+                case m.FriendlyHero():
+                    undo.append((UndoOp.SET_PLAYER_HP,me_idx,me.hp))
+                    me.hp = min(me.max_hp,me.hp+me.hero_power_power)
+                    #if hero has alexstraza charges
+                    if me.hp==me.max_hp and me.alexstrasza_guardian_of_life_charges>0:
+                        for _ in range(me.alexstrasza_guardian_of_life_charges):
+                            undo.append((UndoOp.SET_PLAYER_HP,opp_idx,opp.hp))
+                            opp.hp-=15
+                        undo.append((UndoOp.SET_ALEXSTRASZA_GUARDIAN_OF_LIFE_CHARGES,me_idx,me.alexstrasza_guardian_of_life_charges))
+                        me.alexstrasza_guardian_of_life_charges=0
+                
+                case m.EnemyHero():
+                    undo.append((UndoOp.SET_PLAYER_HP,opp_idx,opp.hp))
+                    opp.hp = min(opp.hp+opp.hero_power_power, opp.max_hp)
+                
+                case m.FriendlyMinion(i):
+                    mn:s.Minion = me.board[i]
+                    
+                    undo.append((UndoOp.SET_MINION_HEALTH,mn,mn.health))
+                    mn.health= min(mn.health+me.hero_power_power,mn.max_health)
+
+                case m.EnemyMinion(i):
+                    mn:s.Minion = opp.board[i]
+
+                    undo.append((UndoOp.SET_MINION_HEALTH,mn,mn.health))
+                    mn.health= min(mn.health+me.hero_power_power,mn.max_health)
+
+
+
+            
+        
+    _check_winner(state, undo)
+    return undo
     
 
 
 
 
-def _start_turn(state: s.GameState) -> None:
+def _start_turn(state: s.GameState, undo:list) -> None:
+    """mutates state and undo list returning nothing"""
     player = state.players[state.current_player]
-    player.max_mana = min(player.max_mana + 1, 10)
+
+    #incrementing max mana
+    if player.max_mana<10:
+        undo.append((UndoOp.SET_PLAYER_MAX_MANA,state.current_player,player.max_mana))
+        player.max_mana = player.max_mana + 1
+
+    #filling mana pool
+    undo.append((UndoOp.SET_PLAYER_MANA,state.current_player,player.mana))
     player.mana = player.max_mana
-    player.hero_power_used = False
+
+    #hero power used reset
+    if player.hero_power_used:
+        undo.append((UndoOp.SET_HERO_POWER_USED,state.current_player,True))
+        player.hero_power_used = False
+
+    #minion start of turn effects
     for mn in list(player.board):#dont want to mutate what im iterating over
-        mn.can_attack = True
+        if not mn.can_attack and mn.attack>0:
+            undo.append((UndoOp.SET_MINION_CAN_ATTACK,mn,False))
+            mn.can_attack = True
         if mn.card in effects.START_OF_TURN:
-            effects.START_OF_TURN[mn.card](state, state.current_player)
-    _draw_card(state, state.current_player)
+            #it is each effects job to log what it does onto undo
+            effects.START_OF_TURN[mn.card](state, state.current_player, undo)
+
+        
+
+    _draw_card(state, state.current_player,undo)
 
 
-def _draw_card(state: s.GameState, player_index: int) -> None:
+def _draw_card(state: s.GameState, player_index: int, undo:list) -> None:
+    """draws a card mutating gamestate and undo. returns nothing"""
     player = state.players[player_index]
     if player.deck:
-        card = player.deck.pop(0)
+        card = player.deck.pop()
+        undo.append((UndoOp.INSERT_PLAYER_DECK,player_index,len(player.deck),card))
         if len(player.hand) < 10:
+            undo.append((UndoOp.DEL_PLAYER_HAND,player_index,len(player.hand)))
             player.hand.append(card)
         # else: card is burned (discarded)
     else:
+        undo.append((UndoOp.SET_FATIGUE_COUNTER,player_index,player.fatigue_counter))
         player.fatigue_counter += 1
+        undo.append((UndoOp.SET_PLAYER_HP,player_index,player.hp))
         player.hp -= player.fatigue_counter
 
 
-def _check_winner(state: s.GameState) -> None:
+def _check_winner(state: s.GameState, undo:list) -> None:
     p0_dead = state.players[0].hp <= 0
     p1_dead = state.players[1].hp <= 0
+    if not p0_dead and not p1_dead:
+        return
+    undo.append((UndoOp.SET_WINNER,state.winner))
     if p0_dead and p1_dead:
         state.winner = -1  # tie
     elif p0_dead:
@@ -185,13 +275,33 @@ def new_game(deck: list[c.CardName]|None = None, seed:int|None=None)->s.GameStat
     state = s.GameState(players=(p0,p1), current_player=0)
     
     for _ in range(3):
-        _draw_card(state, 0)
+        _draw_card(state, 0, [])
     for _ in range(4):
-        _draw_card(state, 1)
+        _draw_card(state, 1, [])
 
     p0.max_mana=1
     p0.mana=1
     p1.max_mana=0
 
     return state
+
+if __name__=="__main__":
+    from game.moves import EndTurn,PlayMinion
+    from game.undo import undo_move
+    from dataclasses import asdict
+
+    state = new_game()
+    state.players[0].max_mana=10
+    state.players[1].max_mana=10
+    cp = copy.deepcopy(state)
+    undo = []
+    undo.append(apply_move(state,EndTurn()))
+    undo.append(apply_move(state,EndTurn()))
+    undo.append(apply_move(state,PlayMinion(0,0)))
+    undo_move(state,undo.pop())
+    undo_move(state,undo.pop())
+    undo_move(state,undo.pop())
+    assert asdict(cp) == asdict(state)
+    #asdict is slow but easy way to compare 2 instances
+
 
