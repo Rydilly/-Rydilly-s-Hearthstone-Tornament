@@ -2,7 +2,7 @@ from game.cards import CardName
 from game.state import GameState,PlayerState
 from typing import Callable
 from game.undo import Op as UndoOp
-from game.engine import kill_minion
+from game.undo import kill_minion
 
 #adds a type sig to funcs without heavy overhead of abstract classes
 EffectFn = Callable[[GameState,int,list],None]
