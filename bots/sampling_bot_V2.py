@@ -30,10 +30,11 @@ class Sampling_Bot_V2(Bot):
         #print(self, state)
         moves = legal_moves(state)
 
-        lethal_combo = self.lethal_finder.find_lethal(state)
-        if lethal_combo and not self.in_sim:
-            print(F"LETHAL FOUND!! \nlethal combo:{lethal_combo}")
-            return lethal_combo[0]
+        if not self.in_sim:
+            lethal_combo = self.lethal_finder.find_lethal(state)#heavy call. dont want to call it when its not needed
+            if lethal_combo:
+                print(F"LETHAL FOUND!! \nlethal combo:{lethal_combo}")
+                return lethal_combo[0]
 
         me = state.players[state.current_player]
         opp = state.players[1-state.current_player]
@@ -51,7 +52,7 @@ class Sampling_Bot_V2(Bot):
             scores = []
             for _ in r:
                 undo = apply_move(state,mv)
-                sh = Sample_Hand(self.opp_data.unseen)
+                sh = Sample_Hand(self.opp_data.unseen, self.opp_data.weights)
                 sh.draw(len(opp.hand))
                 self.replace_opp_hand(state,sh.hand,opp_idx,undo)
                 self.sim_opps_turn(state,undo)
@@ -113,10 +114,22 @@ class Sampling_Bot_V2(Bot):
     def evaluate(self, state: GameState, my_idx:int)->float:
         me = state.players[my_idx]
         opp = state.players[1-my_idx]
+        me_m_atk=0
+        opp_m_atk=0
+        me_m_hp=0
+        opp_m_hp=0
+
+        for mn in me.board:
+            me_m_atk+=mn.attack
+            me_m_hp+=mn.health
+        for mn in opp.board:
+            opp_m_atk+=mn.attack
+            opp_m_hp+=mn.health
+
         score = (
             1* (me.hp-opp.hp)+
-            2*(sum(m.attack for m in me.board)-sum(m.attack for m in opp.board))+
-            1*(sum(m.health for m in me.board)-sum(m.health for m in opp.board))+
+            2*(me_m_atk-opp_m_atk)+
+            1*(me_m_hp-opp_m_hp)+
             .5*(len(me.hand)-len(opp.hand))
         )
         if me.hp<1:
@@ -140,8 +153,8 @@ if __name__=="__main__":
     
     s = Sampling_Bot_V2()
     state = new_game(seed=42)
-    fake_hand = Sample_Hand(Counter(STARTER_DECK))
-    fake_hand.draw(4)
+    #fake_hand = Sample_Hand(Counter(STARTER_DECK))
+    #fake_hand.draw(4)
     sUndo = []
 
     profiler = cProfile.Profile()
@@ -191,4 +204,23 @@ if __name__=="__main__":
     start = time.perf_counter()
     mv = s.pick_move(state)
     print(f"midgame pick_move: {time.perf_counter() - start:.2f}s")
-    print(f"picked: {mv}")
+    print(f"picked: {mv}\n\n")
+
+    import cProfile, pstats
+    from bots.sampling_bot_V2 import Sampling_Bot_V2
+    from bots.value_bot import ValueBot
+    from game.engine import new_game, apply_move
+
+    bot = Sampling_Bot_V2()
+    state = new_game(seed=42)
+    v = ValueBot()
+    for _ in range(20):
+        if state.winner is not None: break
+        apply_move(state, v.pick_move(state))
+
+    profiler = cProfile.Profile()
+    profiler.enable()
+    for _ in range(5):
+        bot.pick_move(state)
+    profiler.disable()
+    pstats.Stats(profiler).sort_stats('cumulative').print_stats(25)

@@ -1,17 +1,24 @@
 from collections import Counter
 import random
 import copy
+from game.state import cards
 
 class Sample_Hand():
-    def __init__(self, unseen:Counter):
+    def __init__(self, unseen:Counter, weights = None):
         self.unseen= unseen.copy()#shallow copy is fine because the keys are immutable and the keys are ints which are also immutable
         self.hand=[]
+        self.weights = [1]*len(self.unseen) if weights is None else weights
 
     def draw(self, n_cards=1):
+        pool:list[cards.CardName] = list(self.unseen.elements())
         for _ in range(n_cards):
             if sum(self.unseen.values())<1:#cant use len because counter still holds items when the counter ==0
                 break
-            next_card = random.choice(list(self.unseen.elements()))
+            
+            w = [self.weights[c] for c in pool]
+
+            next_card_idx = random.choices(range(len(pool)),weights=w,k=1)[0]#could probably just draw all cards i need in future
+            next_card = pool.pop(next_card_idx)
             self.unseen[next_card]-=1
             self.hand.append(next_card)
         return

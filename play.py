@@ -103,9 +103,21 @@ if __name__=="__main__":
 
 
     clock = t.perf_counter()
-    print(run_tournament(doom,Sampling_Bot_V2,n_games))
+    result_1 = run_tournament(Sampling_Bot_V2,ValueBot,n_games)
     avg_time_1 = (t.perf_counter()-clock)/n_games
     print(f"AVG: {avg_time_1}'s per game")
+
+    clock = t.perf_counter()
+    result_2 = run_tournament(Sampling_Bot_V2,AgroBot,n_games)
+    avg_time_2 = (t.perf_counter()-clock)/n_games
+    print(f"AVG: {avg_time_2}'s per game")
+
+    clock = t.perf_counter()
+    result_3 = run_tournament(Sampling_Bot_V2,doom,n_games)
+    avg_time_3 = (t.perf_counter()-clock)/n_games
+    print(f"AVG: {avg_time_3}'s per game")
+
+    print(f"\n{avg_time_1}\n{result_1}\n\n{avg_time_2}\n{result_2}\n\n{avg_time_3}\n{result_3}")
 
 """
     starting_cache_2= len(Lethal_Bot.move_cache)

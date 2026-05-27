@@ -31,7 +31,6 @@ class Doomsayer_smart_bot(Bot):
         enemy_total_dmg = sum(mn.attack for mn in state.players[1-state.current_player].board)
         my_total_dmg = sum(mn.attack for mn in state.players[state.current_player].board)
         
-        alexstraz_in_hand=False
 
         if state.players[state.current_player].hp<15:
             for mv in moves:

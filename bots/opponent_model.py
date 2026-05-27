@@ -52,7 +52,7 @@ class OpponentModel:
         """
         Probability at least 1 copy of card is in hand
         """
-        if self.unseen[card.name]==0:
+        if self.unseen[card]==0:
             return 0
         amount_of_card = self.unseen[card]
         unseen_size = sum(self.unseen.values())
