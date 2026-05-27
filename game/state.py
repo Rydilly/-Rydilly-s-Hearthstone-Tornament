@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Optional
 from game import cards
+import numpy
 
 
 @dataclass(slots=True)
@@ -30,6 +31,29 @@ class PlayerState:
     hero_power_used: bool = False
     hero_power_power: int = 2
 
+    def encode_minions(self)->numpy.ndarray:
+        """
+        makes vectors representing all minions on players board
+        """
+
+        features = []
+
+        for mn in self.board:
+            health_ratio = mn.health/mn.max_health
+            attack_ratio = mn.attack/mn.health
+
+            features.append([
+                mn.attack,
+                mn.health,
+                mn.max_health,
+                1.0 if mn.taunt else 0.0,
+                1.0 if mn.can_attack else 0.0,
+                health_ratio,
+                attack_ratio
+            ])
+
+        return numpy.array(features, dtype=numpy.float32)
+
 
 @dataclass(slots=True)
 class GameState:
@@ -37,6 +61,7 @@ class GameState:
     current_player: int
     turn_number: int = 1
     winner: Optional[int] = None
+
 
     def state_key(self):
         p:PlayerState = self.players[self.current_player]

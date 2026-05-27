@@ -26,6 +26,7 @@ class CardDef:
     attack: int
     health: int
     taunt: bool = False
+    same_turn_damage: int = 0
     #battlecry:function=None#scrapped for now
 
 CARD_DEFS: dict[CardName, CardDef] = {

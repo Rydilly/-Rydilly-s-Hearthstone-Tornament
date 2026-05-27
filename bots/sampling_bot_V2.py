@@ -1,6 +1,6 @@
 from bots.base import Bot
 from bots.opponent_model import OpponentModel
-from game.state import GameState
+from game.state import GameState, PlayerState
 from bots.value_bot import ValueBot
 from game.moves import Move, EndTurn, PlayMinion
 from game.engine import apply_move, legal_moves
@@ -10,6 +10,7 @@ from bots.sample_hand import Sample_Hand
 from game.undo import undo_move, Op as UndoOp
 import math
 from bots.lethal_bot import Lethal_Bot
+import numpy as np
 
 
 
@@ -47,7 +48,7 @@ class Sampling_Bot_V2(Bot):
             r=range(3)
         else:
             r=range(1)
-        for mv in moves:
+        for mv in moves:#find the move with the highest average score
             
             scores = []
             for _ in r:
@@ -85,14 +86,14 @@ class Sampling_Bot_V2(Bot):
             if me.hand[best_move[0].hand_index] in (CardName.ALEXSTRASZA_GUARDIAN_OF_LIFE, CardName.DOOMSAYER):
                 print(f"({opp.hp})\n<{opp.board}>\n\n{me.board}\n{me.hp}\n\nPlayCard:{me.hand[best_move[0].hand_index].name}")
         """
-        if not self.in_sim:
+        if not self.in_sim:#update my data 
             if isinstance(best_move[0], PlayMinion):
                 card = me.hand[best_move[0].hand_index]
                 self.my_data.observe_play(card)
             elif isinstance(best_move[0], EndTurn):
                 self.my_data._update_on_end_turn(state)
 
-        return best_move[0]
+        return best_move[0]#return mv with the highest avg rating
         
 
     def replace_opp_hand(self, game_state: GameState, new_hand, opp_idx:int, undo:list):
@@ -111,7 +112,26 @@ class Sampling_Bot_V2(Bot):
             undo.extend(apply_move(sim_state, cur_move))#apply_move returns a undo:list   
         return 
 
-    def evaluate(self, state: GameState, my_idx:int)->float:
+    def evaluate(self, state: GameState, my_idx:int)->float:        
+        """
+        todo:
+        add phase based eval. ie tempo favored early, resources favored leta, near lethal burst favored
+        mana efficency
+        log scaling on hp 30 to 29 is nothing, 3 to.2 is huge
+        archetype awareness
+        threat projection
+        opp board value can increase score if i have a board clear
+        delayed value, conditional value, swing potential
+        """
+        def embed_minions(p_state: PlayerState)->np.ndarray:
+            vecs = p_state.encode_minions()
+            if len(vecs)==0:
+                return np.array([0.0]*8)
+            return np.concat(
+                [np.mean(vecs,axis=0),
+                [len(vecs)]])#average down columns ie avg attack ect and adds num minions to end of array
+            
+
         me = state.players[my_idx]
         opp = state.players[1-my_idx]
         me_m_atk=0
@@ -119,17 +139,11 @@ class Sampling_Bot_V2(Bot):
         me_m_hp=0
         opp_m_hp=0
 
-        for mn in me.board:
-            me_m_atk+=mn.attack
-            me_m_hp+=mn.health
-        for mn in opp.board:
-            opp_m_atk+=mn.attack
-            opp_m_hp+=mn.health
+        board_diff = embed_minions(me)-embed_minions(opp)
 
         score = (
             1* (me.hp-opp.hp)+
-            2*(me_m_atk-opp_m_atk)+
-            1*(me_m_hp-opp_m_hp)+
+            sum(board_diff)+
             .5*(len(me.hand)-len(opp.hand))
         )
         if me.hp<1:
