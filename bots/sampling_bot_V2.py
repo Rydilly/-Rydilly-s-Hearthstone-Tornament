@@ -134,16 +134,12 @@ class Sampling_Bot_V2(Bot):
 
         me = state.players[my_idx]
         opp = state.players[1-my_idx]
-        me_m_atk=0
-        opp_m_atk=0
-        me_m_hp=0
-        opp_m_hp=0
 
         board_diff = embed_minions(me)-embed_minions(opp)
 
         score = (
             1* (me.hp-opp.hp)+
-            sum(board_diff)+
+            1.5*sum(board_diff)+
             .5*(len(me.hand)-len(opp.hand))
         )
         if me.hp<1:
