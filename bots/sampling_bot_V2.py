@@ -31,7 +31,7 @@ class Sampling_Bot_V2(Bot):
         moves = legal_moves(state)
 
         lethal_combo = self.lethal_finder.find_lethal(state)
-        if lethal_combo:
+        if lethal_combo and not self.in_sim:
             print(F"LETHAL FOUND!! \nlethal combo:{lethal_combo}")
             return lethal_combo[0]
 

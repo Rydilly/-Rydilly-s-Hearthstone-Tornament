@@ -9,7 +9,9 @@ from bots.value_bot import ValueBot
 import pickle
 import atexit
 from game.undo import undo_move
-
+"""
+In the future i wish to cache a max damage from a board state to allow more reuse. sadly a lot of info that isnt usually needed needs to be included because it can mean lethal. It might be better to hard code those spots later.
+"""
 
 class Lethal_Bot(Bot):
     persistent_cache_loaded = False
@@ -66,6 +68,7 @@ class Lethal_Bot(Bot):
         #print("new depth level in find_lethal")
         key = state.state_key()
         if key in self.lethal_move_tree:
+            #print(f"Key found in memo:{key}")#turns out the keys are very useful
             return self.lethal_move_tree[key]
 
         if state.players[1-state.current_player].hp<1:

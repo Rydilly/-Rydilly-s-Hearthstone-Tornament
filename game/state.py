@@ -46,14 +46,16 @@ class GameState:
             #tuple(p.hand),
             #tuple(p.deck),#dont need for minion with no spells ond no ability version
             p.alexstrasza_guardian_of_life_charges,
+            p.hp,
+            p.max_hp,
             p.mana,
             p.hero_power_used,
             p.hero_power_power,
-            tuple(sorted(card.value for card in p.hand)),#all the data each card holds
-            tuple((m.attack, m.health, m.can_attack) for m in p.board),
+            tuple(sorted(card.value for card in p.hand)),#all the data each card holds when outcast is implemented needs changed
+            tuple((m.attack,m.health) for m in p.board),#windfurry will need more data when added
             o.hp,
             o.fatigue_counter,
-            tuple((m.attack, m.health)for m in o.board if m.taunt==True)
+            tuple((m.attack,m.health,m.taunt)for m in o.board)
         )
 
     def __repr__(self) -> str:

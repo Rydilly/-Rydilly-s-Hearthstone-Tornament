@@ -98,7 +98,7 @@ if __name__=="__main__":
 
 
 
-    n_games = 20
+    n_games = 100
     starting_cache_1 = len(Lethal_Bot.move_cache)
 
 
