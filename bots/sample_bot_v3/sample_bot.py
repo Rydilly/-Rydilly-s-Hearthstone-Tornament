@@ -19,13 +19,20 @@ from sklearn.linear_model import LogisticRegression
 
 
 class Sampling_Bot_V3(Bot):
-    def __init__(self, depth = 2, opp_data = None, my_data = None, in_sim=False,eval_input="SBV3_model"):
+    _value_model_cache = {}
+
+    def __init__(self, depth = 2, opp_data = None, my_data = None, in_sim=False,eval_input=None):
         self.opp_data = OpponentModel() if opp_data is None else opp_data
         self.my_data = OpponentModel() if my_data is None else my_data
         self.depth=depth
         self.in_sim = in_sim
         self.lethal_finder = Lethal_Bot()
-        self.ValueModel = ValueModel(eval_input)
+        self.eval_input=eval_input
+        
+        path = eval_input if eval_input is not None else "model-test.pkl"#caching various ValueModels to avoid re opening the same file a ton
+        if path not in Sampling_Bot_V3._value_model_cache:
+            Sampling_Bot_V3._value_model_cache[path]=ValueModel(path)
+        self.ValueModel = Sampling_Bot_V3._value_model_cache[path]
 
 
     def observe(self, state, move):
@@ -38,7 +45,7 @@ class Sampling_Bot_V3(Bot):
         if not self.in_sim:
             lethal_combo = self.lethal_finder.find_lethal(state)#heavy call. dont want to call it when its not needed
             if lethal_combo:
-                print(F"LETHAL FOUND!! \nlethal combo:{lethal_combo}")
+                #print(F"LETHAL FOUND!! \nlethal combo:{lethal_combo}")
                 return lethal_combo[0]
 
         me = state.players[state.current_player]
@@ -110,7 +117,7 @@ class Sampling_Bot_V3(Bot):
     
     def sim_opps_turn(self, sim_state:GameState, undo:list)->GameState:
         cur_move = None
-        temp_brain = Sampling_Bot_V3(depth=self.depth-1, opp_data=self.my_data, my_data=self.opp_data, in_sim=True)
+        temp_brain = Sampling_Bot_V3(depth=self.depth-1, opp_data=self.my_data, my_data=self.opp_data, in_sim=True, eval_input=self.eval_input)
         while not isinstance(cur_move, EndTurn) and (sim_state.winner is None) and not (self.depth<1):
             cur_move = temp_brain.pick_move(sim_state)
             undo.extend(apply_move(sim_state, cur_move))#apply_move returns a undo:list   
@@ -131,23 +138,23 @@ class Sampling_Bot_V3(Bot):
         opp = state.players[1-my_idx]
 
         if me.hp<1:
-            return -math.inf
+            return -10000
         if opp.hp<1:
-            return math.inf
+            return 10000
         
-        return 
+        return self.ValueModel.score(state,my_idx)
 
 class ValueModel:
-    def __init__(self,eval_input="SBV3_model"):
+    def __init__(self,eval_input="model-test.pkl"): 
         with open(eval_input,"rb") as f:
-            self.model:LogisticRegression = pickle.load(f)
+            model:LogisticRegression = pickle.load(f)
+        self.weights = model.coef_[0]
+        self.bias = model.intercept_[0]
 
     def score(self, state, my_idx):
         features = encode_state(state,my_idx)
-        features=features.reshape(1,-1)#first dimension is 1 2nd is whatever is left over
-        #predict_proba returns 2d array [n_samples, n_classes] for this we have 2 classes(0 or 1). inputting 1 sample you get a 1x2 array first val loss other win prob
-        prob_win = self.model.predict_proba(features)[0,1]#try to get all predictions at once by inputting all predicted game states at a pos later
-        return prob_win
+        z = features @self.weights + self.bias#@ is vector mult then c to make linear scaling of any heuristid. resutlt is -50 to 50
+        return 1.0/(1.0+np.exp(-z))#applies z to the -z power. larger z approaches 0 smaller approaches 1 because z lowest is 0
         
 
         
@@ -159,6 +166,8 @@ if __name__=="__main__":
     from game.cards import STARTER_DECK
     import time
     import cProfile, pstats
+
+    
 
     vm = ValueModel("model-test.pkl")
     state = new_game(seed=42)

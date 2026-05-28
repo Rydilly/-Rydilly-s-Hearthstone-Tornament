@@ -4,14 +4,28 @@ from bots.sample_bot_v3.encoding import encode_state
 from bots.base import Bot
 from game.moves import EndTurn
 from typing import Callable
+import time as t
+from bots.sample_bot_v3.sample_bot import ValueModel,Sampling_Bot_V3
+from bots.sample_bot_v3.trainer import train
+import pickle
+import shutil
+
 
 #takes no args and returns a bot
-def collect(n_games: int, bot_factory:Callable[[],Bot])->tuple[numpy.ndarray,numpy.ndarray]:
+def collect(time, bot_factory:Callable[[],Bot], eval_input)->tuple[numpy.ndarray,numpy.ndarray]:
     x,y = [],[]
-    
-    for g in range(n_games):
-        bot_a:Bot = bot_factory()
-        bot_b:Bot = bot_factory()
+
+    start = t.perf_counter()
+    g=0
+
+    while (t.perf_counter()-start)<time:
+        g+=1
+        if g%150==0:
+            print(f"{t.perf_counter()-start:.2f}/{time}(s) Remaining")
+        
+        bot_a:Bot = bot_factory(eval_input=eval_input)
+        bot_b:Bot = bot_factory(eval_input=eval_input)
+        
         state = new_game()
         states_this_game =[]
         if g%2==0:
@@ -39,14 +53,47 @@ def collect(n_games: int, bot_factory:Callable[[],Bot])->tuple[numpy.ndarray,num
             y.append(game_result)
     return numpy.stack(x).astype(numpy.float32),numpy.array(y,dtype=numpy.float32)
 
+def run_iterations(hours, iterations, bot_factory, data_path, model_path):
+    seconds = hours*3600
+    cycle_sec = seconds/iterations
+    for i in range(iterations):
+        print(f"CYCLE {i}/{iterations}\n-------------------------------------------------------------------")
+        x_new, y_new = collect(cycle_sec,bot_factory,model_path)
+        append_data(x_new,y_new,data_path)
+        train(data_path,model_path)
+        Sampling_Bot_V3._value_model_cache.pop(model_path,None)#avoid reuse of same sample ever iteration
+        shutil.copy(model_path,f"model_iter_{i}.pkl")#shell utilities (command line stuff)
+
+def append_data(x_new,y_new,data_path):
+    try:
+        d = numpy.load(data_path)
+        combined_x = numpy.concatenate([d["X"],x_new],axis=0)
+        combined_y = numpy.concatenate([d["Y"],y_new],axis=0)
+    except FileNotFoundError:
+        combined_x = x_new
+        combined_y = y_new
+
+    numpy.savez_compressed(data_path,X=combined_x,Y=combined_y)
+
 if __name__=="__main__":
-    from bots.aggro_bot import AgroBot
+    import cProfile, pstats
+    from game.engine import new_game
+    from bots.sample_bot_v3.sample_bot import Sampling_Bot_V3
 
-    n_games = 200
-    x,y = collect(n_games,AgroBot)
-    numpy.savez_compressed("training-data-test",X=x,Y=y)
 
-    print("shapes:",x,y)
-    print(f"balance: {y.mean():.3f}should be .5")
-    print("total wins", int(y.sum()),"Total losses:", int(len(y)-y.sum()))
-    print(f"Avg states per game: {len(y)/n_games:.1f}")
+    training_data = "acc_data.npz"
+    model = "current_model.pkl"
+    shutil.copy("model-test.pkl",model)
+
+
+    run_iterations(
+        hours=2/60,
+        iterations=2,
+        bot_factory=Sampling_Bot_V3,
+        data_path=training_data,
+        model_path=model)
+
+    d = numpy.load(training_data)
+    y_all = d["Y"]
+    print(f"total samples: {len(y_all)}")
+    print(f"Final balance: {y_all.mean():.3f}")
