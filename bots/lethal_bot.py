@@ -36,7 +36,7 @@ class Lethal_Bot(Bot):
             with open(cls.CACHE_FILE, "rb") as f:
                 cls.move_cache = pickle.load(f)
             print(f"LOADED CACHE WITH {len(cls.move_cache)} ENTRIES")
-        except FileNotFoundError:
+        except (FileNotFoundError,EOFError,pickle.UnpicklingError):
             print("COULDNT FIND CACHE FILE")
             cls.move_cache={}
 

@@ -12,12 +12,14 @@ def play_game(bot_0: Bot, bot_1: Bot, max_turns: int=100, verbose: bool=False)->
         current_bot = bots[state.current_player]
         other_bot = bots[1-state.current_player]
         move = current_bot.pick_move(state)
+        if verbose:
+            print(f"P{state.current_player} ({current_bot.name}): {move}")
         if isinstance(move, EndTurn):
             turn_count+=1
             print(f"TURN_COUNT:{turn_count}")
-
-        if verbose:
-            print(f"P{state.current_player} ({current_bot.name}): {move}")
+            if verbose:
+                print(f"{state.players[1].hp}\n{[(m.attack,m.health) for m in state.players[1].board]}\n\n{[(m.attack,m.health) for m in state.players[0].board]}\n{state.players[0].hp}\n-------------------------------------------------------")
+        
 
         apply_move(state, move)
         other_bot.observe(state, move)
@@ -49,13 +51,12 @@ def run_tournament(bot_a_factory, bot_b_factory, n_games: int = 100)->dict:
                 wins[1]+=1
             else:
                 wins[-1]+=1
+        print(f"bot_a_winrate:{wins[0]/n_games},\nbot_b_winrate:{wins[1]/n_games},\ntie_rate:{wins[-1]/n_games}")
 
-
-    total = n_games
     return{
-        "bot_a_winrate":wins[0]/total,
-        "bot_b_winrate":wins[1]/total,
-        "tie_rate":wins[-1]/total
+        "bot_a_winrate":wins[0]/n_games,
+        "bot_b_winrate":wins[1]/n_games,
+        "tie_rate":wins[-1]/n_games
     }
 
 
@@ -112,12 +113,16 @@ if __name__=="__main__":
     avg_time_2 = (t.perf_counter()-clock)/n_games
     print(f"AVG: {avg_time_2}'s per game")
     """
+
+    
     clock = t.perf_counter()
     result_3 = run_tournament(Sampling_Bot_V3,doom,n_games)
     avg_time_3 = (t.perf_counter()-clock)/n_games
     print(f"AVG: {avg_time_3}'s per game\nresults:{result_3}")
 
     #print(f"\n{avg_time_1}\n{result_1}\n\n{avg_time_2}\n{result_2}\n\n{avg_time_3}\n{result_3}")
+    
+    
 
 """
     starting_cache_2= len(Lethal_Bot.move_cache)

@@ -67,19 +67,21 @@ class Sampling_Bot_V3(Bot):
                 sh = Sample_Hand(self.opp_data.unseen, self.opp_data.weights)
                 sh.draw(len(opp.hand))
                 self.replace_opp_hand(state,sh.hand,opp_idx,undo)
+                undo.extend(apply_move(state,EndTurn()))
                 self.sim_opps_turn(state,undo)
-    
+
+
                 
                 score = -math.inf
                 mv2_legal = legal_moves(state)
                 if not mv2_legal or state.winner is not None:
                     score = self.evaluate(state, my_idx)
                 else:    
-                    print(f"cp={state.current_player}, my_idx={my_idx}, board={[m.card for m in state.players[my_idx].board]}")
+                    #print(f"cp={state.current_player}, my_idx={my_idx}, board={[m.card for m in state.players[my_idx].board]}")
                     for mv2 in mv2_legal:
-                        tmp_undo = apply_move(state,mv2) 
+                        tmp_undo = (apply_move(state,mv2)) 
 
-                        tmp_undo.extend(apply_move(EndTurn()))
+                        tmp_undo.extend(apply_move(state,EndTurn()))
 
                         sc = self.evaluate(state,my_idx)
                         if sc>score:
@@ -124,7 +126,7 @@ class Sampling_Bot_V3(Bot):
         temp_brain = Sampling_Bot_V3(depth=self.depth-1, opp_data=self.my_data, my_data=self.opp_data, in_sim=True, eval_input=self.eval_input)
         while not isinstance(cur_move, EndTurn) and (sim_state.winner is None) and not (self.depth<1):
             cur_move = temp_brain.pick_move(sim_state)
-            undo.extend(apply_move(sim_state, cur_move))#apply_move returns a undo:list   
+            undo.extend(apply_move(sim_state, cur_move))#apply_move returns a undo:list  
         return 
 
     def evaluate(self, state: GameState, my_idx:int)->float:        
