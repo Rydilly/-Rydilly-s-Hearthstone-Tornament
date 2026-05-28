@@ -85,7 +85,7 @@ if __name__=="__main__":
     from bots.doomsayer_smart_bot import Doomsayer_smart_bot as doom
     import time as t
     from bots.sampling_bot_V2 import Sampling_Bot_V2
-
+    from bots.sample_bot_v3.sample_bot import Sampling_Bot_V3
 
     
 
@@ -98,7 +98,7 @@ if __name__=="__main__":
 
 
 
-    n_games = 20
+    n_games = 200
     starting_cache_1 = len(Lethal_Bot.move_cache)
 
     """
@@ -113,9 +113,9 @@ if __name__=="__main__":
     print(f"AVG: {avg_time_2}'s per game")
     """
     clock = t.perf_counter()
-    result_3 = run_tournament(Sampling_Bot_V2,doom,n_games)
+    result_3 = run_tournament(Sampling_Bot_V3,doom,n_games)
     avg_time_3 = (t.perf_counter()-clock)/n_games
-    print(f"AVG: {avg_time_3}'s per game")
+    print(f"AVG: {avg_time_3}'s per game\nresults:{result_3}")
 
     #print(f"\n{avg_time_1}\n{result_1}\n\n{avg_time_2}\n{result_2}\n\n{avg_time_3}\n{result_3}")
 

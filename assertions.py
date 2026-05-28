@@ -287,7 +287,25 @@ def test_round_trip_alexstrasza_battlecry():
                       label="play alexstrasza")
     print("test_round_trip_alexstrasza_battlecry passed")
 
+from game.engine import new_game, apply_move, _start_turn
+from game.moves import EndTurn
+from game.cards import CardName
+from bots.sample_bot_v3.sample_bot import Sampling_Bot_V3
 
+state = new_game(seed=42)
+# Force the scenario: give the opponent a Doomsayer on board
+# (set up state manually so you KNOW what should happen)
+
+print("BEFORE my turn starts:")
+print(f"  cp={state.current_player}")
+print(f"  opp board: {[m.card for m in state.players[...].board]}")
+
+# Now manually do what sim_opps_turn's EndTurn would do:
+undo = apply_move(state, EndTurn())
+
+print("AFTER opponent's EndTurn (which should start MY turn):")
+print(f"  cp={state.current_player}")
+print(f"  my board: {[m.card for m in state.players[...].board]}")
 # ----------------------------------------------------------------------
 # Runner
 # ----------------------------------------------------------------------

@@ -3,7 +3,7 @@ from bots.opponent_model import OpponentModel
 from game.state import GameState, PlayerState
 from bots.value_bot import ValueBot
 from game.moves import Move, EndTurn, PlayMinion
-from game.engine import apply_move, legal_moves
+from game.engine import apply_move, legal_moves, _start_turn
 from game.cards import CardName
 import math
 from bots.sample_hand import Sample_Hand
@@ -75,8 +75,12 @@ class Sampling_Bot_V3(Bot):
                 if not mv2_legal or state.winner is not None:
                     score = self.evaluate(state, my_idx)
                 else:    
+                    print(f"cp={state.current_player}, my_idx={my_idx}, board={[m.card for m in state.players[my_idx].board]}")
                     for mv2 in mv2_legal:
                         tmp_undo = apply_move(state,mv2) 
+
+                        tmp_undo.extend(apply_move(EndTurn()))
+
                         sc = self.evaluate(state,my_idx)
                         if sc>score:
                             score = sc
