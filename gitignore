@@ -1,3 +1,2 @@
-lethal_cache.pkl
 bots/__pycache__/base.cpython-313.pyc
 bots/__pycache__/aggro_bot.cpython-313.pyc bots/__pycache__/base.cpython-313.pyc bots/__pycache__/doomsayer_smart_bot.cpython-313.pyc bots/__pycache__/lethal_bot.cpython-313.pyc bots/__pycache__/opponent_model.cpython-313.pyc bots/__pycache__/random_bot.cpython-313.pyc bots/__pycache__/sample_hand.cpython-313.pyc bots/__pycache__/sampling_bot_v1.cpython-313.pyc bots/__pycache__/sampling_bot_V2.cpython-313.pyc bots/__pycache__/sampling_bot.cpython-313.pyc bots/__pycache__/value_bot.cpython-313.pyc .gitignore

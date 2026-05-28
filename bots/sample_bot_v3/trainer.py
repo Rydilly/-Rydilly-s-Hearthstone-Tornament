@@ -26,7 +26,7 @@ def train(in_name:str,out_name:str):
 
     if len(X)<5000:
         print("datta set too small to eval")
-    else:
+    else:#logloss avg wrongness
         print(f"Train log_loss: {log_loss(Y_train,train_probs):.4f}")#log_loss is a decimal between 0 and 1 the closer it is to the actual result 0 or 1 the less "wrong it is"
         print(f"Test log_loss: {log_loss(Y_test,test_probs):.4f}")#since log_loss scales it takes log(confidence its right). this makes the midpoint or 50/50 .693 (hehe 69)
         #using log loss because the trainer should be more surprised from being super wrong then supper right to ensure it fits all possible variations

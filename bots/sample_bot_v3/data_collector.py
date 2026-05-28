@@ -87,8 +87,8 @@ if __name__=="__main__":
 
 
     run_iterations(
-        hours=2/60,
-        iterations=2,
+        hours=9,
+        iterations=18,
         bot_factory=Sampling_Bot_V3,
         data_path=training_data,
         model_path=model)
