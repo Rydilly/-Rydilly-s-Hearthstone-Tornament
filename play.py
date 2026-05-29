@@ -51,7 +51,7 @@ def run_tournament(bot_a_factory, bot_b_factory, n_games: int = 100)->dict:
                 wins[1]+=1
             else:
                 wins[-1]+=1
-        print(f"bot_a_winrate:{wins[0]/n_games},\nbot_b_winrate:{wins[1]/n_games},\ntie_rate:{wins[-1]/n_games}")
+        print(f"bot_a_winrate:{wins[0]/(i+1)},\nbot_b_winrate:{wins[1]/(i+1)},\ntie_rate:{wins[-1]/(i+1)}")
 
     return{
         "bot_a_winrate":wins[0]/n_games,
@@ -114,7 +114,7 @@ if __name__=="__main__":
     print(f"AVG: {avg_time_2}'s per game")
     """
 
-    
+    """
     clock = t.perf_counter()
     result_3 = run_tournament(Sampling_Bot_V3,doom,n_games)
     avg_time_3 = (t.perf_counter()-clock)/n_games
@@ -122,7 +122,7 @@ if __name__=="__main__":
 
     #print(f"\n{avg_time_1}\n{result_1}\n\n{avg_time_2}\n{result_2}\n\n{avg_time_3}\n{result_3}")
     
-    
+    """
 
 """
     starting_cache_2= len(Lethal_Bot.move_cache)

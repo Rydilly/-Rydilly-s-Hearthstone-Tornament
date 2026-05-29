@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 from game import cards
 import numpy
+from typing import Callable
 
 
 @dataclass(slots=True)
@@ -30,6 +31,10 @@ class PlayerState:
     fatigue_counter: int = 0
     hero_power_used: bool = False
     hero_power_power: int = 2
+    heal_power:int = lambda x: x#update on cleansing cleric
+    spell_amp:int = lambda x: x
+    end_of_turn_effects:list[Callable]=[]
+    overload:int=0
 
     def encode_minions(self)->numpy.ndarray:
         """

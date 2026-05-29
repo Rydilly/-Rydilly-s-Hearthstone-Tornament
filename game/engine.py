@@ -4,7 +4,8 @@ from game import cards as c
 import copy
 import random
 from game import effects
-from game.undo import Op as UndoOp,kill_minion
+from game.undo import Op as UndoOp
+from game.helpers import kill_minion, draw_card
 
 
 def legal_moves(state: s.GameState) -> list[m.Move]:
@@ -68,6 +69,8 @@ def apply_move(state: s.GameState, move: m.Move) -> list:
     match move:
         case m.EndTurn():
             #flipping current player
+
+
             undo.append((UndoOp.SET_CURRENT_PLAYER,me_idx))
             state.current_player = 1-me_idx
 
@@ -199,7 +202,8 @@ def _start_turn(state: s.GameState, undo:list) -> None:
 
     #filling mana pool
     undo.append((UndoOp.SET_PLAYER_MANA,state.current_player,player.mana))
-    player.mana = player.max_mana
+    player.mana = player.max_mana-player.overload
+    player.overload=0
 
     #hero power used reset
     if player.hero_power_used:
@@ -217,24 +221,9 @@ def _start_turn(state: s.GameState, undo:list) -> None:
 
         
 
-    _draw_card(state, state.current_player,undo)
+    draw_card(state, state.current_player,undo)
 
 
-def _draw_card(state: s.GameState, player_index: int, undo:list) -> None:
-    """draws a card mutating gamestate and undo. returns nothing"""
-    player = state.players[player_index]
-    if player.deck:
-        card = player.deck.pop()
-        undo.append((UndoOp.INSERT_PLAYER_DECK,player_index,len(player.deck),card))
-        if len(player.hand) < 10:
-            undo.append((UndoOp.DEL_PLAYER_HAND,player_index,len(player.hand)))
-            player.hand.append(card)
-        # else: card is burned (discarded)
-    else:
-        undo.append((UndoOp.SET_FATIGUE_COUNTER,player_index,player.fatigue_counter))
-        player.fatigue_counter += 1
-        undo.append((UndoOp.SET_PLAYER_HP,player_index,player.hp))
-        player.hp -= player.fatigue_counter
 
 
 def _check_winner(state: s.GameState, undo:list) -> None:
@@ -269,9 +258,9 @@ def new_game(deck: list[c.CardName]|None = None, seed:int|None=None)->s.GameStat
     state = s.GameState(players=(p0,p1), current_player=0)
     
     for _ in range(3):
-        _draw_card(state, 0, [])
+        draw_card(state, 0, [])
     for _ in range(4):
-        _draw_card(state, 1, [])
+        draw_card(state, 1, [])
 
     p0.max_mana=1
     p0.mana=1

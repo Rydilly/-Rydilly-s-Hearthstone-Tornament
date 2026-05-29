@@ -2,7 +2,7 @@ from bots.base import Bot
 from bots.opponent_model import OpponentModel
 from game.state import GameState, PlayerState
 from bots.value_bot import ValueBot
-from game.moves import Move, EndTurn, PlayMinion
+from game.moves import Move, EndTurn, PlayMinion, AttackHero
 from game.engine import apply_move, legal_moves, _start_turn
 from game.cards import CardName
 import math
@@ -95,8 +95,13 @@ class Sampling_Bot_V3(Bot):
                 
             avg_score = (sum(scores)/len(scores))
 
+            #if not self.in_sim and (isinstance(mv,EndTurn) or isinstance(mv,AttackHero)):
+            #    print(f"  current player: {state.current_player}")
+            #    print(f"  {mv}: {avg_score:.3f}")
+
             if avg_score>best_move[1]:
                 best_move=(mv,avg_score)
+                
         """
         #print(f"best move: {best_move[0]}")
         if isinstance(best_move[0],PlayMinion):
@@ -109,7 +114,7 @@ class Sampling_Bot_V3(Bot):
                 self.my_data.observe_play(card)
             elif isinstance(best_move[0], EndTurn):
                 self.my_data._update_on_end_turn(state)
-
+        
         return best_move[0]#return mv with the highest avg rating
         
 

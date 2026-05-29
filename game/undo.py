@@ -25,6 +25,7 @@ class Op(IntEnum):
     SET_HERO_POWER_POWER=62
     SET_FATIGUE_COUNTER=63
     SET_ALEXSTRASZA_GUARDIAN_OF_LIFE_CHARGES=64
+    SET_OVERLOAD=65
     
     
 
@@ -111,6 +112,10 @@ def undo_one(state:GameState, op):
             me:PlayerState = state.players[player_idx]
             me.alexstrasza_guardian_of_life_charges = charges
 
+        case(Op.SET_OVERLOAD,player_idx,overload):
+            me:PlayerState = state.players[player_idx]
+            me.overload=overload
+
 
         #MINION OPS
         case(Op.SET_MINION_ATTACK,mn,old_attack):
@@ -139,10 +144,5 @@ def undo_move(state, undo_record):
         undo_one(state,op)
 
 
-#This dosnt feel like a good fit but engine and effects both need kill_minion so its in here to avoid circular import
-def kill_minion(state:s.GameState, player_idx, board_idx, undo:list):
-    mn = state.players[player_idx].board[board_idx]
-    undo.append((Op.BOARD_INSERT,player_idx,board_idx,mn))
-    #insert deathrattle effect here when rdy
-    state.players[player_idx].board.pop(board_idx)
+
 
