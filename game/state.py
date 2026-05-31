@@ -33,7 +33,7 @@ class PlayerState:
     hero_power_power: int = 2
     heal_power:int = lambda x: x#update on cleansing cleric
     spell_amp:int = lambda x: x
-    end_of_turn_effects:list[Callable]=[]
+    end_of_turn_effects:list[Callable]=field(default_factory=list)
     overload:int=0
 
     def encode_minions(self)->numpy.ndarray:

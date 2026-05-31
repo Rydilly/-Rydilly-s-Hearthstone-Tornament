@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 from typing import Callable
+from game.moves import Target, EnemyHero,EnemyMinion,FriendlyHero,FriendlyMinion
 
 
 class CardName(Enum):
@@ -96,8 +97,8 @@ class MinionDef(CardDef):
     taunt: bool = False
 @dataclass(frozen=True)
 class SpellDef(CardDef):
-    targeted:bool=False
-    effect: Callable
+    target:list[Target]
+   
     
 
 CARD_DEFS: dict[CardName, CardDef] = {
@@ -147,38 +148,39 @@ CARD_DEFS: dict[CardName, CardDef] = {
     CardName.MEDIVH_THE_HALLOWED: MinionDef(CardName.MEDIVH_THE_HALLOWED,10,7,7),
 
     #Priest Spells
-    CardName.FLASH_HEAL:SpellDef(CardName.FLASH_HEAL,1),
-    CardName.HOLY_SMITE:SpellDef(CardName.HOLY_SMITE,1),
-    CardName.MEND:SpellDef(CardName.MEND,1),
-    CardName.POWER_WORD_BARRIER:SpellDef(CardName.POWER_WORD_BARRIER,1),
-    CardName.POWER_WORD_SHIELD:SpellDef(CardName.POWER_WORD_SHIELD,1),
-    CardName.REACH_EQUILIBRIUM:SpellDef(CardName.REACH_EQUILIBRIUM,1),
-    CardName.WINGS_OF_ETERNITY:SpellDef(CardName.WINGS_OF_ETERNITY,1),
-    CardName.PURIFYING_BREATH:SpellDef(CardName.PURIFYING_BREATH,2),
-    CardName.RITUAL_OF_LIFE:SpellDef(CardName.RITUAL_OF_LIFE,2),
-    CardName.SMOLDERING_ASCENT:SpellDef(CardName.SMOLDERING_ASCENT,2),
-    CardName.TWILIGHT_INFLUENCE:SpellDef(CardName.TWILIGHT_INFLUENCE,2),
-    CardName.CEASE_TO_EXIST:SpellDef(CardName.CEASE_TO_EXIST,3),
-    CardName.DEVOURING_PLAGUE:SpellDef(CardName.DEVOURING_PLAGUE,3),
-    CardName.ETERNAL_FIREBOLT:SpellDef(CardName.ETERNAL_FIREBOLT,3),
-    CardName.HOLY_NOVA:SpellDef(CardName.HOLY_NOVA,3),
-    CardName.INTERTWINED_FATE:SpellDef(CardName.INTERTWINED_FATE,3),
-    CardName.LIGHT_OF_THE_NEW_MOON:SpellDef(CardName.LIGHT_OF_THE_NEW_MOON,3),
-    CardName.WISH_OF_THE_NEW_MOON:SpellDef(CardName.WISH_OF_THE_NEW_MOON,3),
-    CardName.FOR_ALL_TIME:SpellDef(CardName.FOR_ALL_TIME,4),
-    CardName.GRAVEDAWN_SUNBLOOM:SpellDef(CardName.GRAVEDAWN_SUNBLOOM,4),
-    CardName.GRAVEDAWN_VOIDBULB:SpellDef(CardName.GRAVEDAWN_VOIDBULB,4),
-    CardName.GREATER_HEALING_POTION:SpellDef(CardName.GREATER_HEALING_POTION,4),
-    CardName.SCHISM:SpellDef(CardName.SCHISM,4),
-    CardName.SHADOW_WORD_RUIN:SpellDef(CardName.SHADOW_WORD_RUIN,4),
-    CardName.VOID_SHARD:SpellDef(CardName.VOID_SHARD,4),
-    CardName.MEDIVHS_TRIUMPH:SpellDef(CardName.MEDIVHS_TRIUMPH,5),
-    CardName.RITUAL_OF_THE_NEW_MOON:SpellDef(CardName.RITUAL_OF_THE_NEW_MOON,5),
-    CardName.INITIATION:SpellDef(CardName.INITIATION,5),
-    CardName.MOONWELL:SpellDef(CardName.MOONWELL,6),
-    CardName.RESUSCITATE:SpellDef(CardName.RESUSCITATE,6),
-    CardName.BEHEMOTH_MASK:SpellDef(CardName.BEHEMOTH_MASK,7),
-    CardName.STORY_OF_AMARA:SpellDef(CardName.STORY_OF_AMARA,10),
+#Priest Spells  
+    CardName.FLASH_HEAL:SpellDef(CardName.FLASH_HEAL,1,[EnemyMinion,EnemyHero,FriendlyHero,FriendlyMinion],),#
+    CardName.HOLY_SMITE:SpellDef(CardName.HOLY_SMITE,1,[EnemyMinion,FriendlyMinion]),#
+    CardName.MEND:SpellDef(CardName.MEND,1,[EnemyMinion,FriendlyMinion]),#
+    CardName.POWER_WORD_BARRIER:SpellDef(CardName.POWER_WORD_BARRIER,1,[EnemyMinion,EnemyHero,FriendlyHero,FriendlyMinion]),
+    CardName.POWER_WORD_SHIELD:SpellDef(CardName.POWER_WORD_SHIELD,1,[EnemyMinion,FriendlyMinion]),#
+    CardName.REACH_EQUILIBRIUM:SpellDef(CardName.REACH_EQUILIBRIUM,1,None),
+    #CardName.WINGS_OF_ETERNITY:SpellDef(CardName.WINGS_OF_ETERNITY,1),
+    CardName.PURIFYING_BREATH:SpellDef(CardName.PURIFYING_BREATH,2,[EnemyMinion,FriendlyMinion]),#
+    #CardName.RITUAL_OF_LIFE:SpellDef(CardName.RITUAL_OF_LIFE,2),
+    #CardName.SMOLDERING_ASCENT:SpellDef(CardName.SMOLDERING_ASCENT,2),
+    #CardName.TWILIGHT_INFLUENCE:SpellDef(CardName.TWILIGHT_INFLUENCE,2),
+    #CardName.CEASE_TO_EXIST:SpellDef(CardName.CEASE_TO_EXIST,3),
+    CardName.DEVOURING_PLAGUE:SpellDef(CardName.DEVOURING_PLAGUE,3,None),#
+    CardName.ETERNAL_FIREBOLT:SpellDef(CardName.ETERNAL_FIREBOLT,3,[FriendlyMinion,EnemyMinion]),#
+    CardName.HOLY_NOVA:SpellDef(CardName.HOLY_NOVA,3,None),#
+    #CardName.INTERTWINED_FATE:SpellDef(CardName.INTERTWINED_FATE,3),
+    #CardName.LIGHT_OF_THE_NEW_MOON:SpellDef(CardName.LIGHT_OF_THE_NEW_MOON,3),
+    #CardName.WISH_OF_THE_NEW_MOON:SpellDef(CardName.WISH_OF_THE_NEW_MOON,3),
+    CardName.FOR_ALL_TIME:SpellDef(CardName.FOR_ALL_TIME,4,None),#
+    #CardName.GRAVEDAWN_SUNBLOOM:SpellDef(CardName.GRAVEDAWN_SUNBLOOM,4),
+    #CardName.GRAVEDAWN_VOIDBULB:SpellDef(CardName.GRAVEDAWN_VOIDBULB,4),
+    CardName.GREATER_HEALING_POTION:SpellDef(CardName.GREATER_HEALING_POTION,4,[FriendlyHero,FriendlyMinion]),#
+    #CardName.SCHISM:SpellDef(CardName.SCHISM,4),
+    CardName.SHADOW_WORD_RUIN:SpellDef(CardName.SHADOW_WORD_RUIN,4,None),#
+    CardName.VOID_SHARD:SpellDef(CardName.VOID_SHARD,4,[EnemyMinion,EnemyHero,FriendlyHero,FriendlyMinion]),#
+    CardName.MEDIVHS_TRIUMPH:SpellDef(CardName.MEDIVHS_TRIUMPH,5,None),#
+    #CardName.RITUAL_OF_THE_NEW_MOON:SpellDef(CardName.RITUAL_OF_THE_NEW_MOON,5),
+    CardName.INITIATION:SpellDef(CardName.INITIATION,5,[EnemyMinion,FriendlyMinion]),#
+    CardName.MOONWELL:SpellDef(CardName.MOONWELL,6,None),#
+    #CardName.RESUSCITATE:SpellDef(CardName.RESUSCITATE,6),
+    #CardName.BEHEMOTH_MASK:SpellDef(CardName.BEHEMOTH_MASK,7),
+    CardName.STORY_OF_AMARA:SpellDef(CardName.STORY_OF_AMARA,10,None),#
 }
 STARTER_DECK: list[CardName]=[#15 total cards rn
     CardName.BLOODMAGE_THALNOS, 
@@ -199,7 +201,37 @@ STARTER_DECK: list[CardName]=[#15 total cards rn
 
 ]
 
-My_Priest: list[CardName]=[
-    
+Spell_test: list[CardName]=[
+    CardName.FLASH_HEAL,
+    CardName.HOLY_SMITE,
+    CardName.MEND,
+    CardName.POWER_WORD_SHIELD,
+    CardName.PURIFYING_BREATH,
+    CardName.DEVOURING_PLAGUE,
+    CardName.ETERNAL_FIREBOLT,
+    CardName.HOLY_NOVA,
+    CardName.FOR_ALL_TIME,
+    CardName.GREATER_HEALING_POTION,
+    CardName.SHADOW_WORD_RUIN,
+    CardName.VOID_SHARD,
+    CardName.MEDIVHS_TRIUMPH,
+    CardName.INITIATION,
+    CardName.MOONWELL,
+    CardName.STORY_OF_AMARA,
+    CardName.BLOODMAGE_THALNOS, 
+    CardName.CRAZED_ALCHEMIST,
+    CardName.CRAZED_ALCHEMIST,
+    CardName.DOOMSAYER,
+    CardName.DOOMSAYER,
+    CardName.ACOLYTE_OF_PAIN,
+    CardName.NIGHTMARE_LORD_XAVIUS,
+    CardName.AMBER_PRIESTESS,
+    CardName.AMBER_PRIESTESS,
+    CardName.KALDOREI_PRIESTESS,
+    CardName.KALDOREI_PRIESTESS,
+    CardName.CLEANSING_CLERIC,
+    CardName.CLEANSING_CLERIC,
+    CardName.CALIA_MENETHIL,
+    CardName.ALEXSTRASZA_GUARDIAN_OF_LIFE
 
 ]

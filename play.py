@@ -79,7 +79,9 @@ def main():
 
 
 if __name__=="__main__":
+    
     from bots.random_bot import RandomBot
+    """
     from bots.value_bot import ValueBot
     from bots.aggro_bot import AgroBot
     from bots.lethal_bot import Lethal_Bot
@@ -102,6 +104,7 @@ if __name__=="__main__":
     n_games = 200
     starting_cache_1 = len(Lethal_Bot.move_cache)
 
+    """
     """
     clock = t.perf_counter()
     result_1 = run_tournament(Sampling_Bot_V2,ValueBot,n_games)

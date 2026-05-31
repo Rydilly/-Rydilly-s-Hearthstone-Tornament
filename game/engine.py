@@ -1,6 +1,7 @@
 from game import moves as m
 from game import state as s
 from game import cards as c
+from game import spells 
 import copy
 import random
 from game import effects
@@ -34,10 +35,34 @@ def legal_moves(state: s.GameState) -> list[m.Move]:
     # Play minions from hand
     if len(player.board) < 7:
         for idx, card_name in enumerate(player.hand):
-            card_def = c.CARD_DEFS[card_name]
-            if card_def.cost <= player.mana:
-                # For v1, only one board position matters (rightmost)
-                out.append(m.PlayMinion(hand_index=idx, board_position=len(player.board)))
+            if isinstance(c.CARD_DEFS[player.hand[idx]], c.MinionDef):
+                card_def = c.CARD_DEFS[card_name]
+                if card_def.cost <= player.mana:
+                    # For v1, only one board position matters (rightmost)
+                    out.append(m.PlayMinion(hand_index=idx, board_position=len(player.board)))
+
+
+    #Play spells form hand
+
+    for idx in range(len(player.hand)):
+        if isinstance(c.CARD_DEFS[player.hand[idx]],c.SpellDef):#if the card is a spell
+            spell:c.SpellDef = c.CARD_DEFS[player.hand[idx]]
+            if spell.cost>player.mana:
+                pass
+            if spell.target is None:
+                out.append(m.PlaySpell(hand_index=idx,target=None))
+                break
+            if m.EnemyMinion in spell.target:
+                for mn_idx in range(len(opponent.board)):
+                    out.append(m.PlaySpell(hand_index=idx,target=m.EnemyMinion(mn_idx)))
+            if m.FriendlyMinion in spell.target:
+                for mn_idx in range(len(player.board)):
+                    out.append(m.PlaySpell(hand_index=idx,target=m.FriendlyMinion(mn_idx)))
+            if m.EnemyHero in spell.target:
+                out.append(m.PlaySpell(hand_index=idx,target=m.EnemyHero()))
+            if m.FriendlyHero in spell.target:
+                out.append(m.PlaySpell(hand_index=idx,target=m.FriendlyHero()))
+
 
 
     # Hero power
@@ -79,6 +104,22 @@ def apply_move(state: s.GameState, move: m.Move) -> list:
             state.turn_number+=1
             _start_turn(state,undo)
 
+        case m.PlaySpell(hand_idx,target):
+            #removing card from hand
+            card_name = me.hand.pop(hand_idx)
+            undo.append((UndoOp.INSERT_PLAYER_HAND,me_idx,hand_idx,card_name))
+
+            #card lookup
+            card_stats = c.CARD_DEFS[card_name]
+
+            #subtracting mana
+            undo.append((UndoOp.SET_PLAYER_MANA,me_idx,me.mana))
+            me.mana-=card_stats.cost
+
+            #let spell do its thing
+            print(f"Playing Spell:{card_name}")
+            spells.PRIEST_SPELLS[card_name](state,me_idx,target,undo)
+    
 
         case m.PlayMinion(hand_idx,board_idx):
             #removing the card from hand
@@ -245,7 +286,7 @@ def new_game(deck: list[c.CardName]|None = None, seed:int|None=None)->s.GameStat
         random.seed(seed)
     
     if deck is None:
-        deck=c.STARTER_DECK
+        deck=c.Spell_test
 
     p0_deck = list(deck)
     p1_deck = list(deck)

@@ -11,21 +11,22 @@ class Op(IntEnum):
 
     #player stats
     SET_PLAYER_HP=50
-    SET_PLAYER_MANA=51
-    SET_PLAYER_MAX_MANA=52
-    BOARD_INSERT=53
-    BOARD_DEL=54
-    INSERT_PLAYER_DECK=55
-    DEL_PLAYER_DECK=56
-    INSERT_PLAYER_HAND=57
-    DEL_PLAYER_HAND=58
-    SET_PLAYER_HAND=59
-    SPAWN_CARD=60
-    SET_HERO_POWER_USED=61
-    SET_HERO_POWER_POWER=62
-    SET_FATIGUE_COUNTER=63
-    SET_ALEXSTRASZA_GUARDIAN_OF_LIFE_CHARGES=64
-    SET_OVERLOAD=65
+    SET_PLAYER_MAX_HP=51
+    SET_PLAYER_MANA=52
+    SET_PLAYER_MAX_MANA=53
+    BOARD_INSERT=54
+    BOARD_DEL=55
+    INSERT_PLAYER_DECK=56
+    DEL_PLAYER_DECK=57
+    INSERT_PLAYER_HAND=58
+    DEL_PLAYER_HAND=59
+    SET_PLAYER_HAND=60
+    SPAWN_CARD=61
+    SET_HERO_POWER_USED=62
+    SET_HERO_POWER_POWER=63
+    SET_FATIGUE_COUNTER=64
+    SET_ALEXSTRASZA_GUARDIAN_OF_LIFE_CHARGES=65
+    SET_OVERLOAD=66
     
     
 
@@ -55,6 +56,10 @@ def undo_one(state:GameState, op):
         case (Op.SET_PLAYER_HP,player_idx,old_hp):
             me:PlayerState = state.players[player_idx]
             me.hp = old_hp
+
+        case (Op.SET_PLAYER_MAX_HP,player_idx,old_hp):
+            me:PlayerState = state.players[player_idx]
+            me.max_hp=old_hp
 
         case (Op.SET_PLAYER_MANA,player_idx,old_mana):
             me:PlayerState = state.players[player_idx]

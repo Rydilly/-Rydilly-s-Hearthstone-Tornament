@@ -287,10 +287,31 @@ def test_round_trip_alexstrasza_battlecry():
                       label="play alexstrasza")
     print("test_round_trip_alexstrasza_battlecry passed")
 
+def play_all_spells():
+    from game.cards import Spell_test
+    from bots.sampling_bot_V2 import Sampling_Bot_V2 as s
+    s1 = s()
+    s2= s()
+    bot_tuple={}
+    state = make_empty_state(
+        p0_deck=Spell_test,
+        p1_deck=Spell_test,
+        p0_hp=20000000,
+        p1_hp=20000000,
+    )
+    while not state.winner:
+        for p in bot_tuple:
+            next_move = bot_tuple[p].pick_move(state)
+            print(f"MOVE:{next_move}")
+            apply_move(next_move)
+
+
+
 from game.engine import new_game, apply_move, _start_turn
 from game.moves import EndTurn
 from game.cards import CardName
 from bots.sample_bot_v3.sample_bot import Sampling_Bot_V3
+
 
 state = new_game(seed=42)
 # Force the scenario: give the opponent a Doomsayer on board

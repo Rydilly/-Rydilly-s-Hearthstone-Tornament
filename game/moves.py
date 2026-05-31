@@ -30,6 +30,11 @@ class PlayMinion:
     hand_index: int
     board_position: int
 
+@dataclass(frozen=True)
+class PlaySpell:
+    hand_index: int
+    target: Target|None
+
 
 @dataclass(frozen=True)
 class Attack:

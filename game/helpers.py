@@ -1,6 +1,6 @@
 from game.state import PlayerState, GameState
-from undo import Op as UndoOp
-from moves import Target,Move,EnemyHero,EnemyMinion,FriendlyHero,FriendlyMinion
+from game.undo import Op as UndoOp
+from game.moves import Target,Move,EnemyHero,EnemyMinion,FriendlyHero,FriendlyMinion
 
 
 
@@ -30,9 +30,10 @@ def draw_card(state: GameState, player_idx: int, undo:list) -> None:
 def deal_damage(state:GameState, my_idx:int, target:Target, dmg:int, undo:list)->bool:
     """
     does not apply amp. returns true if it kills a minion
+    returns a bool based on if minion was killed 
     """
     opp_idx = 1-my_idx
-    me,opp = state.players[my_idx],state.players[my_idx]
+    me,opp = state.players[my_idx],state.players[1-my_idx]
     
     match target:
         case EnemyHero():
@@ -41,45 +42,45 @@ def deal_damage(state:GameState, my_idx:int, target:Target, dmg:int, undo:list)-
         case EnemyMinion(mn_idx):
             mn=opp.board[mn_idx]
             undo.append((UndoOp.SET_MINION_HEALTH,state,mn,mn.health))
-            mn_idx-=dmg
+            mn.health-=dmg
             if mn.health<1:
                 kill_minion(state,opp_idx,mn_idx,undo)
                 return True
         case FriendlyHero():
             undo.append((UndoOp.SET_PLAYER_HP,my_idx,me.hp))
-            opp.hp-=dmg
+            me.hp-=dmg
         case FriendlyMinion(mn_idx):
             mn=me.board[mn_idx]
             undo.append((UndoOp.SET_MINION_HEALTH,state,mn,mn.health))
-            mn_idx-=dmg
+            mn.health-=dmg
             if mn.health<1:
                 kill_minion(state,my_idx,mn_idx,undo)
                 return True
     return False
 
-def heal(state:GameState, my_idx:int, target:Target, heal:int, undo:list):
+def heal(state:GameState, my_idx:int, target:Target, heal_amt:int, undo:list):
     """
     amp not applied
     """
     opp_idx = 1-my_idx
-    me,opp = state.players[my_idx],state.players[my_idx]
+    me,opp = state.players[my_idx],state.players[1-my_idx]
     
     match target:
         case EnemyHero():
             undo.append((UndoOp.SET_PLAYER_HP,opp_idx,opp.hp))
-            opp.hp=min(opp.max_hp,opp.hp+heal)
+            opp.hp=min(opp.max_hp,opp.hp+heal_amt)
         case EnemyMinion(mn_idx):
             mn=opp.board[mn_idx]
             undo.append((UndoOp.SET_MINION_HEALTH,state,mn,mn.health))
-            mn_idx=min(mn.max_health,mn.health+heal)
+            mn.health=min(mn.max_health,mn.health+heal_amt)
             if mn.health<1:
                 kill_minion(state,opp_idx,mn_idx,undo)
         case FriendlyHero():
             undo.append((UndoOp.SET_PLAYER_HP,my_idx,me.hp))
-            opp.hp=min(opp.max_hp,opp.hp+heal)
+            me.hp=min(opp.max_hp,opp.hp+heal_amt)
         case FriendlyMinion(mn_idx):
             mn=me.board[mn_idx]
             undo.append((UndoOp.SET_MINION_HEALTH,state,mn,mn.health))
-            mn_idx=min(mn.max_health,mn.health+heal)
+            mn.health=min(mn.max_health,mn.health+heal_amt)
             if mn.health<1:
                 kill_minion(state,my_idx,mn_idx,undo)
